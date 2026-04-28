@@ -110,35 +110,46 @@ const Attendance = () => {
 
     const getCumulativeAttendance = (subjectName, semester) => {
         const semesterData = attendanceData.find(s => s.semester === semester);
-        if (!semesterData) return "No Data";
+        if (!semesterData || !semesterData.months || semesterData.months.length === 0) return "No Data";
 
-        let totalAttended = 0;
-        let totalTaken = 0;
+        // The latest month contains cumulative attendance, so only use the month with the highest month number
+        const latestMonthData = semesterData.months.reduce((latest, current) => 
+            (current.month > latest.month) ? current : latest
+        , semesterData.months[0]);
 
-        semesterData.months.forEach(monthData => {
-            const sub = monthData.subjects.find(s => s.subjectName === subjectName);
-            if (sub) {
-                totalAttended += sub.attendedClasses;
-                totalTaken += sub.totalClasses;
-            }
-        });
+        // Find subject ignoring case and whitespace
+        const targetName = subjectName.trim().toLowerCase();
+        const sub = latestMonthData.subjects.find(s => 
+            s.subjectName && s.subjectName.trim().toLowerCase() === targetName
+        );
+
+        if (!sub) return "No Data";
+
+        const totalAttended = sub.attendedClasses;
+        const totalTaken = sub.totalClasses;
 
         if (totalTaken === 0) return "No Data";
         const percentage = ((totalAttended / totalTaken) * 100).toFixed(2);
         return `${totalAttended}/${totalTaken} (${percentage}%)`;
     };
+    
     const getOverallAttendance = (semester) => {
         const semesterData = attendanceData.find(s => s.semester === semester);
-        if (!semesterData) return "No Data";
+        if (!semesterData || !semesterData.months || semesterData.months.length === 0) return "No Data";
+        
         let totalAttended = 0;
         let totalTaken = 0;
 
-        semesterData.months.forEach((monthData) => {
-          monthData.subjects.forEach((subject) => {
+        // The latest month contains cumulative attendance, so use the highest month number for the overall average too
+        const latestMonthData = semesterData.months.reduce((latest, current) => 
+            (current.month > latest.month) ? current : latest
+        , semesterData.months[0]);
+
+        latestMonthData.subjects.forEach((subject) => {
             totalAttended += subject.attendedClasses;
             totalTaken += subject.totalClasses;
-          });
         });
+
         if (totalTaken === 0) return "No Data";
 
         const percentage = ((totalAttended / totalTaken) * 100).toFixed(2);
@@ -157,7 +168,10 @@ const Attendance = () => {
     const monthData = semesterData.months.find((m) => m.month === month);
     if (!monthData) return "No Data";
 
-    const subject = monthData.subjects.find((s) => s.subjectName === subjectName);
+    const targetName = subjectName.trim().toLowerCase();
+    const subject = monthData.subjects.find((s) => 
+      s.subjectName && s.subjectName.trim().toLowerCase() === targetName
+    );
     if (!subject) return "No Data";
 
     const { attendedClasses, totalClasses } = subject;
@@ -192,17 +206,18 @@ const Attendance = () => {
         // Get all subjects from all months in the selected semester
         const allSubjects = semesterData.months.flatMap(monthData => monthData.subjects);
         
-        // Create a Map to store unique subjects by subjectName (since subjectCode might be missing)
+        // Create a Map to store unique subjects by subjectName 
         const uniqueSubjects = new Map();
         
         // Process all subjects, keeping only the most recent entry for each subject
         allSubjects.forEach(subject => {
-            // Use subjectName as the unique key since subjectCode might be empty
-            const key = subject.subjectName || 'Unknown Subject';
+            // Standardize the subject name to avoid duplicates due to casing or spaces
+            const rawName = subject.subjectName || 'Unknown Subject';
+            const key = rawName.trim().toLowerCase();
+            
             if (!uniqueSubjects.has(key)) {
                 uniqueSubjects.set(key, {
-                    subjectCode: subject.subjectCode || 'N/A',
-                    subjectName: subject.subjectName || 'Unknown Subject'
+                    subjectName: rawName.trim()
                 });
             }
         });
@@ -293,9 +308,6 @@ const Attendance = () => {
           <TableHead>
             <TableRow>
               <TableCell sx={{ border: "1px solid gray" }}>
-                Subject Code
-              </TableCell>
-              <TableCell sx={{ border: "1px solid gray" }}>
                 Subject Name
               </TableCell>
               <TableCell sx={{ border: "1px solid gray" }}>
@@ -309,16 +321,13 @@ const Attendance = () => {
           <TableBody>
             {getSubjectsForSemester().length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} align="center" sx={{ border: "1px solid gray", py: 3 }}>
+                <TableCell colSpan={3} align="center" sx={{ border: "1px solid gray", py: 3 }}>
                   No attendance data available for the selected filters.
                 </TableCell>
               </TableRow>
             ) : (
               getSubjectsForSemester().map((subject, index) => (
                 <TableRow key={`${subject.subjectName}-${index}`}>
-                  <TableCell sx={{ border: "1px solid gray" }}>
-                    {subject.subjectCode}
-                  </TableCell>
                   <TableCell sx={{ border: "1px solid gray" }}>
                     {subject.subjectName}
                   </TableCell>
@@ -332,7 +341,7 @@ const Attendance = () => {
               ))
             )}
             <TableRow sx={{ fontWeight: "bold" }}>
-              <TableCell colSpan={2}>Overall Attendance</TableCell>
+              <TableCell>Overall Attendance</TableCell>
               <TableCell>
                 {getOverallAttendance(selectedSemester)}
                 <Box component="span" sx={{ ml: 1 }}>
