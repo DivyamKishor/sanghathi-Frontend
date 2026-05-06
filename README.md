@@ -67,26 +67,7 @@ Mentoring and student performance processes are often distributed across spreads
 
 The Sanghathi Frontend provides an organized, role-aware experience that reduces manual overhead and improves data visibility across mentoring teams. It serves as the interaction layer for daily institutional mentoring operations.
 
-## Contributors
-
-- shovan-mondal
-- SUJAY-HK
-- Kulsum06
-- Sai-Emani25
-- monu564100
-- vsuryacharan
-- advitha24
-- Kethanvr
-
 See [contribute.md](contribute.md) for contribution standards.
-
-## Doubts or Support
-
-If you have any doubt about setup, modules, or usage:
-
-1. Open an issue in this repository with the title prefix `Question:`.
-2. Include screenshots and your exact error message.
-3. Mention your role flow (Admin/Faculty/Student) for faster help.
 
 ## License
 

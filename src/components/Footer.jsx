@@ -21,9 +21,7 @@ const commonLinks = [
   { label: "Settings", to: "/settings" },
 ];
 
-const contactLinks = [
-  { label: "About Developers", to: "/about-developers" },
-];
+const contactLinks = [];
 
 const SUPPORT_EMAIL = "emithru@gmail.com";
 
