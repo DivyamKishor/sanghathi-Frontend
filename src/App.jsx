@@ -35,6 +35,7 @@ const DirectorViewMentors = lazy(() => import("./pages/Director/DirectorViewMent
 const DirectorMenteesList = lazy(() => import("./pages/Director/DirectorMenteesList"));
 const HodDashboard = lazy(() => import("./pages/Hod/HodDashboard"));
 const ViewUsers = lazy(() => import("./pages/Admin/ViewUsers"));
+const ViewMentors = lazy(() => import("./pages/Admin/ViewMentors"));
 const Data = lazy(() => import("./pages/Admin/Data"));
 const UploadHistory = lazy(() => import("./pages/Admin/UploadHistory"));
 const FacultyDashboard = lazy(() => import("./pages/Faculty/FacultyDashboard"));
@@ -236,6 +237,14 @@ function App() {
                     element={
                       <ProtectedRouteWrapper>
                         <LazyLoadWrapper component={ViewUsers} />
+                      </ProtectedRouteWrapper>
+                    }
+                  />
+                  <Route
+                    path="/admin/mentors"
+                    element={
+                      <ProtectedRouteWrapper allowedRoles={["admin"]}>
+                        <LazyLoadWrapper component={ViewMentors} />
                       </ProtectedRouteWrapper>
                     }
                   />

@@ -19,10 +19,25 @@ import MentorSuggestionMenu from "./MentorSuggestionMenu";
 import { AuthContext } from "../../context/AuthContext";
 
 import logger from "../../utils/logger.js";
+
+const getMentorDepartment = () => {
+  try {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      return user.department;
+    }
+  } catch (e) {
+    logger.warn("Could not get department from localStorage", e);
+  }
+  return null;
+};
+
 const MentorAssignmentDialog = ({ open, studentIds, onClose, onSuccess }) => {
   const { enqueueSnackbar } = useSnackbar();
   const { state: authState } = useContext(AuthContext);
   const currentUser = authState?.user;
+  const userDepartment = currentUser?.department || getMentorDepartment();
   
   const [selectedMentor, setSelectedMentor] = useState({ name: "" }); // Initialize with empty name
   const [anchorEl, setAnchorEl] = useState(null);
@@ -47,7 +62,7 @@ const MentorAssignmentDialog = ({ open, studentIds, onClose, onSuccess }) => {
         });
         const { data } = response.data;
         setMentors(data.users || []);
-        logger.info(`Loaded ${data.users?.length || 0} mentors for department: ${currentUser?.department}`);
+        logger.info(`Loaded ${data.users?.length || 0} mentors for department: ${userDepartment}`);
       } catch (error) {
         logger.error("Failed to fetch mentors:", error);
         enqueueSnackbar("Failed to load mentors", { variant: "error" });
@@ -57,7 +72,7 @@ const MentorAssignmentDialog = ({ open, studentIds, onClose, onSuccess }) => {
     };
 
     fetchMentors();
-  }, [open, currentUser?.department, enqueueSnackbar]);
+  }, [open, userDepartment, enqueueSnackbar]);
 
   const handleMentorNameChange = (event) => {
     const value = event.target.value;
@@ -129,9 +144,9 @@ const MentorAssignmentDialog = ({ open, studentIds, onClose, onSuccess }) => {
           <Typography variant="h6">
             Assign Mentor to {studentIds.length} Selected Student(s)
           </Typography>
-          {currentUser?.department && (
+          {userDepartment && (
             <Chip
-              label={`${currentUser.department} Mentors`}
+              label={`${userDepartment} Mentors`}
               color="primary"
               variant="outlined"
               size="small"
@@ -143,7 +158,7 @@ const MentorAssignmentDialog = ({ open, studentIds, onClose, onSuccess }) => {
         <Box sx={{ position: 'relative', pt: 2 }}>
           {loading && (
             <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-              Loading mentors for {currentUser?.department} department...
+              Loading mentors for {userDepartment} department...
             </Typography>
           )}
           <TextField
@@ -155,7 +170,7 @@ const MentorAssignmentDialog = ({ open, studentIds, onClose, onSuccess }) => {
             value={selectedMentor.name || ""}
             onChange={handleMentorNameChange}
             disabled={loading}
-            placeholder={`Search from ${mentors.length} ${currentUser?.department} mentors...`}
+            placeholder={`Search from ${mentors.length} ${userDepartment} mentors...`}
           />
           {suggestions.length > 0 && (
             <Paper
