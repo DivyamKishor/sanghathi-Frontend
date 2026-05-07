@@ -54,8 +54,8 @@ const MentorAssignmentDialog = ({ open, studentIds, onClose, onSuccess }) => {
         const params = {
           role: "faculty",
           page: 1,
-          limit: 500,
-          fields: "_id,name,email,department",
+          limit: 1000,
+          fields: "_id,name,email,department,avatar,photo",
           includeProfiles: true,
         };
 
@@ -66,8 +66,9 @@ const MentorAssignmentDialog = ({ open, studentIds, onClose, onSuccess }) => {
         const loadedMentors = data.users || [];
         setMentors(loadedMentors);
         setSuggestions(loadedMentors);
+        
         if (!loadedMentors.length && userDepartment) {
-          enqueueSnackbar(`No ${userDepartment} mentors found. Showing all faculty if available.`, { variant: "info" });
+          logger.warn(`No ${userDepartment} mentors found.`);
         }
         logger.info(`Loaded ${loadedMentors.length || 0} mentors for department: ${userDepartment}`);
       } catch (error) {
