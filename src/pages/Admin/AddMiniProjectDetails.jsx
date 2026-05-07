@@ -11,7 +11,13 @@ import {
   Alert,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  IconButton
 } from "@mui/material";
 import {
   FileDownload as FileDownloadIcon,
@@ -19,6 +25,7 @@ import {
   HelpOutline as HelpOutlineIcon
 } from "@mui/icons-material";
 import { alpha, useTheme } from "@mui/material/styles";
+import ClearIcon from "@mui/icons-material/Clear";
 import Papa from "papaparse";
 import api from "../../utils/axios";
 import useDraftPersistence from "../../hooks/useDraftPersistence";
@@ -34,6 +41,8 @@ const AddMiniProjectDetails = () => {
   const [errorCount, setErrorCount] = useState(0);
   const [errors, setErrors] = useState([]);
   const [file, setFile] = useState(null);
+  const [openConfirm, setOpenConfirm] = useState(false);
+  const [tempRows, setTempRows] = useState([]);
 
   const draftScopeId = useMemo(() => resolveDraftScopeId(), []);
 
@@ -101,24 +110,39 @@ const AddMiniProjectDetails = () => {
     if (!uploadedFile) return;
 
     setFile(uploadedFile);
-    setProcessing(true);
-    setErrors([]);
-    setSuccessCount(0);
-    setErrorCount(0);
-
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       const content = e.target.result;
-
       const results = Papa.parse(content, {
         header: true,
         skipEmptyLines: true
       });
-
-      await processRows(results.data);
+      
+      if (results.data.length === 0) {
+        return;
+      }
+      
+      setTempRows(results.data);
+      setOpenConfirm(true);
     };
-
     reader.readAsText(uploadedFile);
+    event.target.value = "";
+  };
+
+  const handleConfirmUpload = async () => {
+    setOpenConfirm(false);
+    setProcessing(true);
+    setErrors([]);
+    setSuccessCount(0);
+    setErrorCount(0);
+    await processRows(tempRows);
+  };
+
+  const handleClearResults = () => {
+    setSuccessCount(0);
+    setErrorCount(0);
+    setErrors([]);
+    setFile(null);
   };
 
   // ================= PROCESS ROWS =================
@@ -263,6 +287,18 @@ const AddMiniProjectDetails = () => {
                 Errors encountered: {errorCount}
               </Alert>
             )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+              <Button 
+                size="small" 
+                onClick={handleClearResults}
+                startIcon={<ClearIcon />}
+                color="inherit"
+                sx={{ opacity: 0.7 }}
+              >
+                Clear Results
+              </Button>
+            </Box>
           </Box>
         )}
 
@@ -284,6 +320,35 @@ const AddMiniProjectDetails = () => {
           </Typography>
         </Paper>
       </Paper>
+
+      <Dialog
+        open={openConfirm}
+        onClose={() => setOpenConfirm(false)}
+        PaperProps={{
+          sx: { borderRadius: 2, p: 1 }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 'bold' }}>Confirm Upload</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            You have selected <strong>{file?.name}</strong> with <strong>{tempRows.length}</strong> records. 
+            Are you sure you want to proceed with the bulk upload for <strong>Mini Project Details</strong>?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOpenConfirm(false)} color="inherit">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleConfirmUpload} 
+            variant="contained" 
+            autoFocus
+            sx={{ bgcolor: 'primary.main', '&:hover': { bgcolor: 'primary.dark' } }}
+          >
+            Start Upload
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

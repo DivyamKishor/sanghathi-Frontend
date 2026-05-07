@@ -40,6 +40,7 @@ const AddAttendance = () => {
   const [processing, setProcessing] = useState(false);
   const [successCount, setSuccessCount] = useState(0);
   const [errorCount, setErrorCount] = useState(0);
+  const [errors, setErrors] = useState([]);
   const [file, setFile] = useState(null);
   const [openConfirm, setOpenConfirm] = useState(false);
   const [tempRows, setTempRows] = useState([]);
