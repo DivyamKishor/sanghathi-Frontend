@@ -228,6 +228,7 @@ const AddIat = () => {
     let errors = 0;
     const newErrors = [];
     const affectedUserIds = new Set();
+    const uploadEntries = [];
 
     // Group rows by USN and Semester
     const groupedData = {};
@@ -275,6 +276,12 @@ const AddIat = () => {
         await api.post(`/students/iat/${userId}`, iatData);
         success++;
         affectedUserIds.add(String(userId));
+        uploadEntries.push({
+          uploadIndex: uploadEntries.length + 1,
+          userId: String(userId),
+          usn: data.usn,
+          semester: data.semester,
+        });
       } catch (error) {
         errors++;
         newErrors.push(`Error for USN ${data.usn}, Semester ${data.semester}: ${error.message}`);
@@ -289,6 +296,9 @@ const AddIat = () => {
       errorCount: errors,
       errors: newErrors,
       affectedUserIds: Array.from(affectedUserIds),
+      metadata: {
+        entries: uploadEntries,
+      },
     });
 
     setSuccessCount(success);

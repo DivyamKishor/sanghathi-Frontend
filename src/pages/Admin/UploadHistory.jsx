@@ -648,7 +648,7 @@ export default function UploadHistory() {
             You are about to restore the upload session from <strong>{sessionToRestore && formatDateTime(sessionToRestore.createdAt)}</strong>.
           </Typography>
           <Typography variant="body2" color="error" sx={{ mb: 2, fontWeight: 600 }}>
-            This will delete all records created or updated during this session. This action cannot be undone.
+            This will delete only the semesters recorded in this session for the affected students. This action cannot be undone.
           </Typography>
           <Box sx={{ p: 2, bgcolor: alpha(theme.palette.error.main, 0.05), borderRadius: 1, border: '1px solid', borderColor: alpha(theme.palette.error.main, 0.2) }}>
             <Typography variant="body2" sx={{ mb: 1 }}>
