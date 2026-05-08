@@ -151,21 +151,21 @@ const External = () => {
       )}
 
       {!loading && error && (
-      <TableContainer sx={{ border: "1px solid gray", overflowX: "auto" }}>
-        {noDataMessage && externalData.length === 0 ? (
-          <Box sx={{ mb: 2 }}>
-            <DataStateCard
-              title="External marks not found"
-              message={noDataMessage}
-            />
-          </Box>
-        ) : null}
+        <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
       )}
 
       {!loading && (
-      <TableContainer sx={{ border: "1px solid gray", overflowX: "auto" }}>
+        <TableContainer sx={{ border: "1px solid gray", overflowX: "auto" }}>
+          {noDataMessage && externalData.length === 0 ? (
+            <Box sx={{ mb: 2 }}>
+              <DataStateCard
+                title="External marks not found"
+                message={noDataMessage}
+              />
+            </Box>
+          ) : null}
         <Table sx={{ minWidth: { xs: 920, md: "100%" } }}>
           <TableHead>
             <TableRow>
@@ -262,7 +262,7 @@ const External = () => {
 
           </TableBody>
         </Table>
-      </TableContainer>
+        </TableContainer>
       )}
     </Container>
   );
