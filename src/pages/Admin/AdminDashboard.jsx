@@ -16,6 +16,7 @@ import {
   Person as PersonIcon,
   Summarize as SummarizeIcon,
   SupervisorAccount as SupervisorAccountIcon,
+  RateReviewOutlined as RateReviewOutlinedIcon,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { blueGrey } from "@mui/material/colors";
@@ -181,6 +182,14 @@ const AdminDashboard = () => {
               title="Thread Reports"
               icon={<SummarizeIcon />}
               link="/report"
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={isLight ? 6 : 6} lg={isLight ? 4 : 4}>
+            <AdminTile
+              title="Feedback Control"
+              icon={<RateReviewOutlinedIcon />}
+              link="/feedback/manage"
             />
           </Grid>
         </Grid>

@@ -29,6 +29,7 @@ import {
   Today as TodayIcon,
   Group as GroupIcon,
   Analytics as AnalyticsIcon,
+  FeedbackOutlined as FeedbackOutlinedIcon,
 } from "@mui/icons-material";
 import { blueGrey } from "@mui/material/colors";
 import { alpha } from "@mui/material/styles";
@@ -199,9 +200,15 @@ const Dashboard = () => {
                 link="/student/attendance"
               />
             </Grid>
-            
 
-            
+            <Grid item xs={12} sm={6} md={isLight ? 6 : 6} lg={isLight ? 4 : 4}>
+              <StudentTile
+                title="Feedback"
+                icon={<FeedbackOutlinedIcon />}
+                link="/feedback"
+              />
+            </Grid>
+
             <Grid item xs={12} sm={6} md={isLight ? 6 : 6} lg={isLight ? 4 : 4}>
               <StudentTile
                 title="PO Attainment"

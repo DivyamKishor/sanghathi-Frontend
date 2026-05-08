@@ -50,6 +50,8 @@ const StudentDashboard = lazy(() => import("./pages/Faculty/StudentDashboard"));
 const Settings = lazy(() => import("./pages/Settings/Settings"));
 const TYLScorecard = lazy(() => import("./pages/Student/TYLScorecard"));
 const MentorMenteeConversation = lazy(() => import("./pages/MentorMentee/MentorMenteeConversation"));
+const FeedbackForm = lazy(() => import("./pages/Feedback/feedback"));
+const FeedbackManagement = lazy(() => import("./pages/Feedback/FeedbackManagement"));
 const MyChatBot = lazy(() => import("./mychatbot"));
 const Updates = lazy(() => import("./pages/Updates"));
 
@@ -293,6 +295,22 @@ function App() {
                     element={
                       <ProtectedRouteWrapper>
                         <LazyLoadWrapper component={StudentProfile} />
+                      </ProtectedRouteWrapper>
+                    }
+                  />
+                  <Route
+                    path="/feedback"
+                    element={
+                      <ProtectedRouteWrapper allowedRoles={["student"]}>
+                        <LazyLoadWrapper component={FeedbackForm} />
+                      </ProtectedRouteWrapper>
+                    }
+                  />
+                  <Route
+                    path="/feedback/manage"
+                    element={
+                      <ProtectedRouteWrapper allowedRoles={["admin", "hod", "director"]}>
+                        <LazyLoadWrapper component={FeedbackManagement} />
                       </ProtectedRouteWrapper>
                     }
                   />

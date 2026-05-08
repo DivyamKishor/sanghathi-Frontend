@@ -16,6 +16,7 @@ import {
   Person as PersonIcon,
   Summarize as SummarizeIcon,
   SupervisorAccount as SupervisorAccountIcon,
+  RateReviewOutlined as RateReviewOutlinedIcon,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import { blueGrey } from "@mui/material/colors";
@@ -165,6 +166,14 @@ const HodDashboard = () => {
               title="Thread Reports"
               icon={<SummarizeIcon />}
               link="/report"
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={isLight ? 6 : 6} lg={isLight ? 4 : 4}>
+            <HodTile
+              title="Feedback Review"
+              icon={<RateReviewOutlinedIcon />}
+              link="/feedback/manage"
             />
           </Grid>
         </Grid>
