@@ -217,19 +217,42 @@ const FeedbackManagement = () => {
         }
       }
 
-      // 7. Fetch mentor groups for HOD/Director
-      if (isHodOrDirector && activeSem) {
+      // 7. For HOD/Director, organize feedback data into mentee lists
+      if (isHodOrDirector && activeSem && allStudents.length > 0) {
         try {
-          const mentorResponse = await api.get(`/feedback/by-mentor/${user._id}`, {
-            params: {
-              semester: activeSem,
-              round: activeRound,
-              department: user.department,
-            },
+          // Create a map of student feedback
+          const feedbackMap = {};
+          feedbacks.forEach(fb => {
+            const studentId = fb.userId?._id || fb.userId;
+            if (!feedbackMap[studentId]) {
+              feedbackMap[studentId] = [];
+            }
+            feedbackMap[studentId].push(fb);
           });
-          setMentorGroups(mentorResponse.data?.data?.mentors || []);
+          
+          // Enrich all students with feedback data
+          const enrichedMentees = allStudents.map(student => ({
+            studentId: student._id,
+            studentName: student.name,
+            collegeCode: student.collegeCode,
+            semester: student.semester,
+            feedbacks: feedbackMap[student._id] || [],
+            // Add average score for current round
+            averageScore: feedbackMap[student._id]?.find(f => f.feedbackRound === activeRound)?.averageScore
+          }));
+          
+          // For now, show all as one group for HOD/Director
+          // Later can be enhanced to fetch actual mentor assignments
+          setMentorGroups([{
+            mentorId: user._id,
+            mentorName: "My Mentees", 
+            mentees: enrichedMentees
+          }]);
+          
+          logger.info("Mentee data prepared for HOD/Director:", enrichedMentees.length, "mentees");
         } catch (err) {
-          logger.error("Error fetching mentor groups:", err);
+          logger.error("Error organizing mentor groups:", err);
+          setMentorGroups([]);
         }
       }
 
@@ -339,22 +362,31 @@ const FeedbackManagement = () => {
   };
 
   const handleOpenEditInDialog = (feedback) => {
+    if (!feedback) {
+      enqueueSnackbar("No feedback data to edit", { variant: "warning" });
+      return;
+    }
+    
     setEditingFeedback(feedback);
-    editorMethods.reset({
-      mentorAccessibility: feedback.mentorAccessibility?.toString() || "",
-      mentorInteraction: feedback.mentorInteraction?.toString() || "",
-      academicHelp: feedback.academicHelp?.toString() || "",
-      mentorConcern: feedback.mentorConcern?.toString() || "",
-      listeningSkills: feedback.listeningSkills?.toString() || "",
-      professionalMotivation: feedback.professionalMotivation?.toString() || "",
-      barrierResolution: feedback.barrierResolution?.toString() || "",
-      systemEffectiveness: feedback.systemEffectiveness?.toString() || "",
-      continuationWillingness: feedback.continuationWillingness?.toString() || "",
+    
+    // Ensure all values are properly converted to strings for radio buttons
+    const resetData = {
+      mentorAccessibility: feedback.mentorAccessibility ? feedback.mentorAccessibility.toString() : "1",
+      mentorInteraction: feedback.mentorInteraction ? feedback.mentorInteraction.toString() : "1",
+      academicHelp: feedback.academicHelp ? feedback.academicHelp.toString() : "1",
+      mentorConcern: feedback.mentorConcern ? feedback.mentorConcern.toString() : "1",
+      listeningSkills: feedback.listeningSkills ? feedback.listeningSkills.toString() : "1",
+      professionalMotivation: feedback.professionalMotivation ? feedback.professionalMotivation.toString() : "1",
+      barrierResolution: feedback.barrierResolution ? feedback.barrierResolution.toString() : "1",
+      systemEffectiveness: feedback.systemEffectiveness ? feedback.systemEffectiveness.toString() : "1",
+      continuationWillingness: feedback.continuationWillingness ? feedback.continuationWillingness.toString() : "1",
       awareOfPST: feedback.awareOfPST ? "yes" : "no",
       awareOfPLT: feedback.awareOfPLT ? "yes" : "no",
       remarks: feedback.remarks || "",
-    });
-    setIsEditMode(true);
+    };
+    
+    editorMethods.reset(resetData);
+    setIsEditingInDialog(true);
   };
 
   const handleDialogSubmit = async (formData) => {
