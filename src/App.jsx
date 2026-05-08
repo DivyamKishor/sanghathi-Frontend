@@ -449,7 +449,11 @@ function App() {
                     path="/threads"
                     element={
                       <ProtectedRouteWrapper>
-                        <LazyLoadWrapper component={Thread} />
+                        {["hod", "admin", "director"].includes(user?.roleName) ? (
+                          <Navigate replace to="/recent-threads" />
+                        ) : (
+                          <LazyLoadWrapper component={Thread} />
+                        )}
                       </ProtectedRouteWrapper>
                     }
                   />

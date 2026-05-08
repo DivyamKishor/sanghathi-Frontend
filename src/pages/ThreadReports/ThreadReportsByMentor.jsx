@@ -51,7 +51,7 @@ const ThreadReportsByMentor = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("");
-  const [threadCountMap, setThreadCountMap] = useState({});
+
 
   // Fetch mentor info
   useEffect(() => {
@@ -97,9 +97,8 @@ const ThreadReportsByMentor = () => {
         .toLowerCase()
         .includes(searchTerm.toLowerCase()) ||
       (mentee?.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (mentee?.registrationNumber || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      (mentee?.profile?.usn || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (mentee?.registrationNumber || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     const semesterMatch =
       !semesterFilter || (mentee?.profile?.sem || "").toString() === semesterFilter;
@@ -280,7 +279,7 @@ const ThreadReportsByMentor = () => {
                   <TableRow>
                     <TableCell sx={{ fontWeight: "bold" }}>Mentee</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>Reg. No.</TableCell>
+                    <TableCell sx={{ fontWeight: "bold" }}>USN</TableCell>
                     <TableCell sx={{ fontWeight: "bold" }} align="center">
                       Semester
                     </TableCell>
@@ -335,7 +334,7 @@ const ThreadReportsByMentor = () => {
                       </TableCell>
                       <TableCell>
                         <Typography variant="body2">
-                          {mentee?.registrationNumber || "N/A"}
+                          {mentee?.profile?.usn || mentee?.registrationNumber || "N/A"}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">

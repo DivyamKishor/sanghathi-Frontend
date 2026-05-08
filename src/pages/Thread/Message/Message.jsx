@@ -74,7 +74,23 @@ const MessageItem = ({ message, conversation }) => {
     null;
 
   const isMe = normalizedSenderId === normalizedCurrentUserId;
-  const justifyContent = isMe ? "flex-end" : "flex-start";
+  
+  // Custom alignment for observers (HOD/Admin/Director)
+  const isObserver = ["hod", "admin", "director"].includes(user?.roleName) && 
+                     !participants.some(p => String(p._id) === normalizedCurrentUserId);
+  
+  let justifyContent = isMe ? "flex-end" : "flex-start";
+  let alignRight = isMe;
+
+  if (isObserver) {
+    if (sender?.roleName === "faculty") {
+      justifyContent = "flex-end";
+      alignRight = true;
+    } else {
+      justifyContent = "flex-start";
+      alignRight = false;
+    }
+  }
 
   const firstName = sender?.name && sender.name.split(" ")[0];
   const senderAvatarSrc = getAvatarSrc(sender);
@@ -89,11 +105,11 @@ const MessageItem = ({ message, conversation }) => {
           gap: 1,
         }}
       >
-        {!isMe && (
+        {(!alignRight || isObserver) && (
           <Avatar
             alt={sender?.name}
             src={senderAvatarSrc || undefined}
-            sx={{ width: 32, height: 32 }}
+            sx={{ width: 32, height: 32, order: alignRight ? 2 : 0 }}
           >
             {!senderAvatarSrc ? getAvatarFallbackText(sender?.name) : null}
           </Avatar>
@@ -103,13 +119,14 @@ const MessageItem = ({ message, conversation }) => {
           sx={{
             display: "inline-flex",
             flexDirection: "column",
-            alignItems: isMe ? "flex-end" : "flex-start",
+            alignItems: alignRight ? "flex-end" : "flex-start",
             maxWidth: "min(75vw, 420px)",
+            order: 1
           }}
         >
           <ContentStyle
             sx={{
-              ...(isMe
+              ...(alignRight
                 ? {
                     color: "primary.contrastText",
                     bgcolor: "primary.main",
@@ -128,11 +145,11 @@ const MessageItem = ({ message, conversation }) => {
               mt: 0.75,
               display: "flex",
               alignItems: "center",
-              justifyContent: isMe ? "flex-end" : "flex-start",
+              justifyContent: alignRight ? "flex-end" : "flex-start",
               gap: 0.75,
             }}
           >
-            {!isMe && firstName ? (
+            {(!alignRight || isObserver) && firstName ? (
               <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 600 }}>
                 {firstName}
               </Typography>
