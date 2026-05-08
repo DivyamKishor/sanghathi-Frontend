@@ -151,19 +151,33 @@ export default function FacultyDetailsForm() {
 
   const fetchFacultyData = useCallback(async () => {
     try {
-      const response = await api.get(`/faculty/profile/${user._id}`);
-      const { data } = response.data;
+      const [profileResponse, mentorResponse] = await Promise.allSettled([
+        api.get(`/faculty/profile/${user._id}`),
+        api.get(`/mentorship/mentor/${user._id}`),
+      ]);
+
+      const { data } = profileResponse.status === "fulfilled" ? profileResponse.value.data : {};
+      const mentorData = mentorResponse.status === "fulfilled" ? mentorResponse.value.data?.mentor || null : null;
       logger.info(data);
       
       if (data) {
-        data.facultyProfile.dateOfBirth = new Date(data.facultyProfile.dateOfBirth).toISOString().split('T')[0];
-        Object.keys(data.facultyProfile).forEach((key) => {
-          if (data.facultyProfile[key] && typeof data.facultyProfile[key] === "object") {
-            Object.keys(data.facultyProfile[key]).forEach((innerKey) => {
-              setValue(`facultyProfile.${key}.${innerKey}`, data.facultyProfile[key][innerKey]);
+        const resolvedFacultyProfile = {
+          ...data.facultyProfile,
+          department: data.facultyProfile.department || mentorData?.department || "",
+          cabin: data.facultyProfile.cabin || mentorData?.cabin || "",
+        };
+
+        if (resolvedFacultyProfile.dateOfBirth) {
+          resolvedFacultyProfile.dateOfBirth = new Date(resolvedFacultyProfile.dateOfBirth).toISOString().split('T')[0];
+        }
+
+        Object.keys(resolvedFacultyProfile).forEach((key) => {
+          if (resolvedFacultyProfile[key] && typeof resolvedFacultyProfile[key] === "object") {
+            Object.keys(resolvedFacultyProfile[key]).forEach((innerKey) => {
+              setValue(`facultyProfile.${key}.${innerKey}`, resolvedFacultyProfile[key][innerKey]);
             });
           } else {
-            setValue(`facultyProfile.${key}`, data.facultyProfile[key]);
+            setValue(`facultyProfile.${key}`, resolvedFacultyProfile[key]);
           }
         });
         setIsDataFetched(true);
@@ -447,7 +461,7 @@ export default function FacultyDetailsForm() {
                   name="facultyProfile.aadharCardNumber"
                   label="Aadhar Card Number"
                   fullWidth
-                  required={!isDataFetched}
+                  required={false}
                   autoComplete="off"
                   InputLabelProps={{ shrink: shouldShrink("facultyProfile.aadharCardNumber") }}
                 />

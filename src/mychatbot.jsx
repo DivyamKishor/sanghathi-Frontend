@@ -230,45 +230,44 @@ const MyChatBot = () => {
             : `linear-gradient(120deg, ${alpha(accentColor, 0.16)} 0%, ${alpha(theme.palette.success.main, 0.13)} 100%)`,
         }}
       >
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1.2}
-          alignItems={{ xs: "flex-start", sm: "center" }}
-          justifyContent="space-between"
-        >
-          <Box>
-            <Typography
-              variant="subtitle1"
-              sx={{
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                gap: 0.7,
-              }}
-            >
-              <ConstructionRoundedIcon sx={{ fontSize: 18, color: accentColor }} />
-              Campus Buddy is under active development
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              More features are being rolled out soon. Current build supports quick department, exam, and FAQ assistance.
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={0.8} flexWrap="wrap" useFlexGap>
-            <Chip
-              size="small"
-              icon={<RocketLaunchRoundedIcon />}
-              label="Upcoming: smarter context"
-              sx={{ borderColor: alpha(accentColor, 0.4) }}
-              variant="outlined"
-            />
-            <Chip
-              size="small"
-              label="Feature preview"
-              color={isLight ? "primary" : "info"}
-              variant="filled"
-            />
+          <Stack spacing={1.5}>
+            <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 2,
+                  display: "grid",
+                  placeItems: "center",
+                  backgroundColor: alpha(theme.palette.warning.main, 0.18),
+                  border: `1px solid ${alpha(theme.palette.warning.main, 0.35)}`,
+                  color: theme.palette.warning.dark,
+                }}
+              >
+                <ConstructionRoundedIcon fontSize="medium" />
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 220 }}>
+                <Typography variant="overline" sx={{ letterSpacing: 1.6, fontWeight: 800, color: theme.palette.warning.dark }}>
+                  Under Development
+                </Typography>
+                <Typography variant="h5" sx={{ fontWeight: 900, lineHeight: 1.1, mt: 0.25 }}>
+                  Campus Buddy is not production-ready yet.
+                </Typography>
+                <Typography variant="body1" sx={{ mt: 0.75, color: theme.palette.text.secondary, maxWidth: 900 }}>
+                  Use it as a preview assistant for departmental guidance only. Some answers can still be incomplete while we finish the knowledge base.
+                </Typography>
+              </Box>
+              <Chip
+                label="Preview only"
+                color="warning"
+                variant="filled"
+                sx={{ fontWeight: 800, px: 1 }}
+              />
+            </Stack>
+            <Alert severity="warning" icon={<RocketLaunchRoundedIcon fontSize="inherit" />} sx={{ fontWeight: 600 }}>
+              The chatbot is available for testing, but responses are still being refined.
+            </Alert>
           </Stack>
-        </Stack>
       </Paper>
 
       <Alert
