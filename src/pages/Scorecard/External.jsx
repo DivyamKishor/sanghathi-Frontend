@@ -22,6 +22,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import api from "../../utils/axios";
 import logger from "../../utils/logger.js";
+import DataStateCard from "../../components/DataStateCard";
 
 const External = () => {
   const { user } = useContext(AuthContext);
@@ -33,6 +34,7 @@ const External = () => {
   const [externalData, setExternalData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [noDataMessage, setNoDataMessage] = useState("");
   const [selectedSemester, setSelectedSemester] = useState(null);
   const availableSemesters = [1, 2, 3, 4, 5, 6, 7, 8];
 
@@ -58,21 +60,29 @@ const External = () => {
         if (data.semesters && data.semesters.length > 0) {
           setExternalData(data.semesters);
           setSelectedSemester(data.semesters[0].semester);
+          setNoDataMessage("");
         } else {
           setExternalData([data]);
           setSelectedSemester(1); // Default to first semester
+          setNoDataMessage("");
         }
       } else {
         setExternalData([]);
         setSelectedSemester(1); // Default to first semester
+        setNoDataMessage("No external marks data found for this student yet.");
       }
 
       setLoading(false);
     } catch (err) {
       logger.error("Error fetching external marks:", err);
       
-      // For any error, including 404, just show an empty table
-      setExternalData([{passingDate: null, sgpa: null, subjects: []}]);
+      if (err?.response?.status === 404) {
+        setExternalData([]);
+        setNoDataMessage("No external marks data found for this student yet.");
+      } else {
+        setError("Failed to fetch external marks data");
+        setExternalData([]);
+      }
       setSelectedSemester(1); // Default to first semester
       setLoading(false);
     }
@@ -141,7 +151,15 @@ const External = () => {
       )}
 
       {!loading && error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+      <TableContainer sx={{ border: "1px solid gray", overflowX: "auto" }}>
+        {noDataMessage && externalData.length === 0 ? (
+          <Box sx={{ mb: 2 }}>
+            <DataStateCard
+              title="External marks not found"
+              message={noDataMessage}
+            />
+          </Box>
+        ) : null}
           {error}
         </Alert>
       )}

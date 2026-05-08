@@ -23,6 +23,7 @@ import { useSearchParams } from "react-router-dom";
 import useStudentSemester from "../../hooks/useStudentSemester";
 import api from "../../utils/axios";
 import logger from "../../utils/logger.js";
+import DataStateCard from "../../components/DataStateCard";
 
 const Iat = () => {
   const { user } = useContext(AuthContext);
@@ -35,6 +36,7 @@ const Iat = () => {
   const [iatData, setIatData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [noDataMessage, setNoDataMessage] = useState("");
   const [selectedSemester, setSelectedSemester] = useState(null);
 
   const getSelectedSemesterSubjects = useCallback(() => {
@@ -103,11 +105,18 @@ const Iat = () => {
         }
       } else {
           setIatData([]);
+          setNoDataMessage("No IAT data found for this student yet.");
       }
 
       setLoading(false);
     } catch (err) {
-      setError("Failed to fetch IAT data");
+      if (err?.response?.status === 404) {
+        setIatData([]);
+        setNoDataMessage("No IAT data found for this student yet.");
+        setError("");
+      } else {
+        setError("Failed to fetch IAT data");
+      }
       setLoading(false);
       logger.error(err); // Log the error for debugging
     }
@@ -179,6 +188,14 @@ const Iat = () => {
 
       {!loading && !error && (
       <TableContainer sx={{ border: "1px solid gray", overflowX: "auto" }}>
+        {noDataMessage && iatData.length === 0 ? (
+          <Box sx={{ mb: 2 }}>
+            <DataStateCard
+              title="IAT marks not found"
+              message={noDataMessage}
+            />
+          </Box>
+        ) : null}
         <Table sx={{ minWidth: { xs: 640, md: "100%" } }}>
           <TableHead>
             <TableRow>
@@ -197,7 +214,7 @@ const Iat = () => {
             {getSubjectsForSemester().length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} align="center" sx={{ border: "1px solid gray", py: 3 }}>
-                  No IAT data available for the selected semester.
+                  {noDataMessage || "No IAT data available for the selected semester."}
                 </TableCell>
               </TableRow>
             ) : (

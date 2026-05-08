@@ -22,6 +22,7 @@ import {
 import { AuthContext } from "../../context/AuthContext";
 import useStudentSemester from "../../hooks/useStudentSemester";
 import api from "../../utils/axios";
+import DataStateCard from "../../components/DataStateCard";
 
 import logger from "../../utils/logger.js";
 const Attendance = () => {
@@ -34,6 +35,7 @@ const Attendance = () => {
   const [studentInfo, setStudentInfo] = useState({ usn: '', name: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [noDataMessage, setNoDataMessage] = useState("");
   const [selectedSemester, setSelectedSemester] = useState(null); // Initialize to null
   const [selectedMonth, setSelectedMonth] = useState(0); // 0 for "All"
 
@@ -91,13 +93,21 @@ const Attendance = () => {
           logger.info('[Attendance] Setting semester to:', defaultSem, '(studentSemester:', studentSemester, ', first available:', data.semesters[0].semester, ')');
           setSelectedSemester(defaultSem);
         }
+        setNoDataMessage("");
       } else {
         setAttendanceData([]);
+        setNoDataMessage("No attendance data found for this student yet.");
       }
       setLoading(false);
     } catch (err) {
       logger.error("Attendance fetch error:", err); // Debug log
-      setError("Failed to fetch attendance data");
+      if (err?.response?.status === 404) {
+        setAttendanceData([]);
+        setNoDataMessage("No attendance data found for this student yet.");
+        setError("");
+      } else {
+        setError("Failed to fetch attendance data");
+      }
       setLoading(false);
     }
   }, [semesterLoading, searchParams, user, studentSemester]);
@@ -304,6 +314,14 @@ const Attendance = () => {
 
       {!loading && !error && (
         <TableContainer sx={{ border: "1px solid gray", overflowX: "auto" }}>
+          {noDataMessage && attendanceData.length === 0 ? (
+            <Box sx={{ mb: 2 }}>
+              <DataStateCard
+                title="Attendance not found"
+                message={noDataMessage}
+              />
+            </Box>
+          ) : null}
           <Table sx={{ minWidth: { xs: 720, md: "100%" } }}>
           <TableHead>
             <TableRow>
