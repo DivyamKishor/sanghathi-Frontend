@@ -22,6 +22,11 @@ import { LoadingButton } from "@mui/lab";
 import { FormProvider, RHFTextField } from "../../components/hook-form";
 import { alpha, useTheme } from "@mui/material/styles";
 import FeedbackOutlinedIcon from "@mui/icons-material/FeedbackOutlined";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
+import AssignmentLateIcon from "@mui/icons-material/AssignmentLate";
+import LockIcon from "@mui/icons-material/Lock";
+import { Button } from "@mui/material";
 
 import logger from "../../utils/logger.js";
 
@@ -101,14 +106,16 @@ export default function FeedbackForm() {
   const isLight = theme.palette.mode === "light";
   const { enqueueSnackbar } = useSnackbar();
   const { user } = useContext(AuthContext);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const targetUserId = searchParams.get("menteeId") || user?._id;
+  const selectedRound = searchParams.get("round");
 
   const [isLoading, setIsLoading] = useState(true);
   const [feedbackWindow, setFeedbackWindow] = useState(null);
   const [isEditable, setIsEditable] = useState(false);
   const [semesterOptions, setSemesterOptions] = useState([]);
   const [averageScore, setAverageScore] = useState(null);
+  const [submissionsStatus, setSubmissionsStatus] = useState({ 1: false, 2: false });
 
   const methods = useForm({ defaultValues: DEFAULT_VALUES });
   const {
@@ -167,7 +174,13 @@ export default function FeedbackForm() {
         }
 
         setFeedbackWindow(windowData);
-        setIsEditable(Boolean(windowData?.isEnabled));
+
+        // Update isEditable based on selected round
+        if (selectedRound) {
+          setIsEditable(Boolean(windowData?.isEnabled && windowData?.feedbackRound?.toString() === selectedRound));
+        } else {
+          setIsEditable(false);
+        }
 
         // Set default semester if available
         if (windowData?.semester && semesterOptions.length > 0) {
@@ -183,38 +196,51 @@ export default function FeedbackForm() {
             const feedbackResponse = await api.get(`/feedback/student/${targetUserId}`, {
               params: {
                 semester: windowData.semester,
-                round: windowData.feedbackRound,
+                // If no round selected, we don't pass round to get all submissions status
               },
             });
-            const feedbackData = feedbackResponse.data?.data?.feedbackByRound?.[windowData.feedbackRound] || null;
+            
+            const feedbackByRound = feedbackResponse.data?.data?.feedbackByRound || {};
+            setSubmissionsStatus({
+              1: !!feedbackByRound[1],
+              2: !!feedbackByRound[2],
+            });
 
-            if (feedbackData) {
-              reset({
-                semester: feedbackData.semester,
-                mentorAccessibility: feedbackData.mentorAccessibility?.toString() || "",
-                mentorInteraction: feedbackData.mentorInteraction?.toString() || "",
-                academicHelp: feedbackData.academicHelp?.toString() || "",
-                mentorConcern: feedbackData.mentorConcern?.toString() || "",
-                listeningSkills: feedbackData.listeningSkills?.toString() || "",
-                professionalMotivation: feedbackData.professionalMotivation?.toString() || "",
-                barrierResolution: feedbackData.barrierResolution?.toString() || "",
-                systemEffectiveness: feedbackData.systemEffectiveness?.toString() || "",
-                continuationWillingness: feedbackData.continuationWillingness?.toString() || "",
-                awareOfPST: feedbackData.awareOfPST ? "yes" : "no",
-                awareOfPLT: feedbackData.awareOfPLT ? "yes" : "no",
-                remarks: feedbackData.remarks || "",
-              });
-            } else {
-              reset({ ...DEFAULT_VALUES, semester: windowData.semester });
+            if (selectedRound) {
+              const feedbackData = feedbackByRound[selectedRound] || null;
+
+              if (feedbackData) {
+                reset({
+                  semester: feedbackData.semester,
+                  mentorAccessibility: feedbackData.mentorAccessibility?.toString() || "",
+                  mentorInteraction: feedbackData.mentorInteraction?.toString() || "",
+                  academicHelp: feedbackData.academicHelp?.toString() || "",
+                  mentorConcern: feedbackData.mentorConcern?.toString() || "",
+                  listeningSkills: feedbackData.listeningSkills?.toString() || "",
+                  professionalMotivation: feedbackData.professionalMotivation?.toString() || "",
+                  barrierResolution: feedbackData.barrierResolution?.toString() || "",
+                  systemEffectiveness: feedbackData.systemEffectiveness?.toString() || "",
+                  continuationWillingness: feedbackData.continuationWillingness?.toString() || "",
+                  awareOfPST: feedbackData.awareOfPST ? "yes" : "no",
+                  awareOfPLT: feedbackData.awareOfPLT ? "yes" : "no",
+                  remarks: feedbackData.remarks || "",
+                });
+              } else {
+                reset({ ...DEFAULT_VALUES, semester: windowData.semester });
+              }
             }
           } catch (err) {
             if (err?.response?.status !== 404) {
               logger.error("Error fetching feedback:", err);
             }
-            reset({ ...DEFAULT_VALUES, semester: windowData.semester });
+            if (selectedRound) {
+              reset({ ...DEFAULT_VALUES, semester: windowData.semester });
+            }
           }
         } else {
-          reset(DEFAULT_VALUES);
+          if (selectedRound) {
+            reset(DEFAULT_VALUES);
+          }
         }
       } catch (err) {
         logger.error("Error fetching feedback window:", err);
@@ -231,7 +257,7 @@ export default function FeedbackForm() {
     return () => {
       mounted = false;
     };
-  }, [targetUserId, enqueueSnackbar, reset, semesterOptions, methods]);
+  }, [targetUserId, enqueueSnackbar, reset, semesterOptions, methods, selectedRound]);
 
   const onSubmit = async (formData) => {
     try {
@@ -305,6 +331,161 @@ export default function FeedbackForm() {
   const statusSeverity = feedbackWindow?.isEnabled ? "success" : "warning";
   const windowLabel = roundLabel(feedbackWindow?.feedbackRound);
 
+  const handleSelectRound = (round) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("round", round);
+    setSearchParams(params);
+  };
+
+  const handleBackToSelection = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("round");
+    setSearchParams(params);
+  };
+
+  if (!selectedRound) {
+    return (
+      <Box
+        sx={{
+          minHeight: "100vh",
+          backgroundColor: isLight
+            ? alpha(theme.palette.primary.lighter, 0.35)
+            : alpha(theme.palette.grey[900], 0.22),
+          py: 8,
+          px: 2,
+        }}
+      >
+        <Box sx={{ maxWidth: 800, mx: "auto" }}>
+          <Box sx={{ mb: 6, textAlign: "center" }}>
+            <Typography variant="h2" sx={{ fontWeight: 900, mb: 2 }}>
+              Mentoring Feedback
+            </Typography>
+            <Typography variant="h6" color="text.secondary" sx={{ fontWeight: 500 }}>
+              Select a feedback round to continue
+            </Typography>
+          </Box>
+
+          <Grid container spacing={4}>
+            {[1, 2].map((round) => {
+              const isCurrent = feedbackWindow?.feedbackRound === round;
+              const isSubmitted = submissionsStatus[round];
+              const isSubmissionOpen = isCurrent && feedbackWindow?.isEnabled;
+
+              return (
+                <Grid item xs={12} sm={6} key={round}>
+                  <Card
+                    onClick={() => handleSelectRound(round)}
+                    sx={{
+                      p: 4,
+                      cursor: "pointer",
+                      textAlign: "center",
+                      borderRadius: 4,
+                      transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                      position: "relative",
+                      overflow: "hidden",
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                      "&:hover": {
+                        transform: "translateY(-12px)",
+                        boxShadow: (theme) => theme.customShadows?.z24 || 24,
+                        borderColor: theme.palette.primary.main,
+                        "& .icon-wrapper": {
+                          backgroundColor: theme.palette.primary.main,
+                          color: "#fff",
+                          transform: "scale(1.1) rotate(5deg)",
+                        },
+                      },
+                    }}
+                  >
+                    {isCurrent && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 15,
+                          right: -30,
+                          backgroundColor: theme.palette.success.main,
+                          color: "#fff",
+                          px: 5,
+                          py: 0.5,
+                          transform: "rotate(45deg)",
+                          fontSize: "0.75rem",
+                          fontWeight: 800,
+                          zIndex: 1,
+                        }}
+                      >
+                        ACTIVE
+                      </Box>
+                    )}
+
+                    <Box
+                      className="icon-wrapper"
+                      sx={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: "24px",
+                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                        color: theme.palette.primary.main,
+                        display: "grid",
+                        placeItems: "center",
+                        mx: "auto",
+                        mb: 3,
+                        transition: "all 0.4s ease",
+                      }}
+                    >
+                      {isSubmitted ? (
+                        <AssignmentTurnedInIcon sx={{ fontSize: 40 }} />
+                      ) : (
+                        <FeedbackOutlinedIcon sx={{ fontSize: 40 }} />
+                      )}
+                    </Box>
+
+                    <Typography variant="h4" sx={{ fontWeight: 900, mb: 1 }}>
+                      Feedback {round}
+                    </Typography>
+
+                    <Stack spacing={1} alignItems="center">
+                      {isSubmitted ? (
+                        <Chip
+                          icon={<AssignmentTurnedInIcon />}
+                          label="Submitted"
+                          color="success"
+                          size="small"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      ) : (
+                        <Chip
+                          icon={<AssignmentLateIcon />}
+                          label="Not Submitted"
+                          color="warning"
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
+
+                      {!isSubmissionOpen && (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: theme.palette.text.disabled,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
+                        >
+                          <LockIcon sx={{ fontSize: 14 }} /> Submission Closed
+                        </Typography>
+                      )}
+                    </Stack>
+                  </Card>
+                </Grid>
+              );
+            })}
+          </Grid>
+        </Box>
+      </Box>
+    );
+  }
+
   return (
     <Box
       sx={{
@@ -316,6 +497,16 @@ export default function FeedbackForm() {
       }}
     >
       <Box sx={{ maxWidth: 1040, mx: "auto", px: { xs: 1.5, sm: 2.5 } }}>
+        <Box sx={{ mb: 3 }}>
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={handleBackToSelection}
+            sx={{ fontWeight: 700 }}
+          >
+            Back to Selection
+          </Button>
+        </Box>
+
         <Card
           sx={{
             mb: 3,
@@ -341,16 +532,23 @@ export default function FeedbackForm() {
             </Box>
             <Box sx={{ flex: 1, minWidth: 240 }}>
               <Typography variant="overline" sx={{ fontWeight: 800, letterSpacing: 1.4 }}>
-                Mentoring Feedback
+                Mentoring Feedback - Round {selectedRound}
               </Typography>
               <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.15 }}>
-                Share your mentoring feedback
+                {isEditable ? "Submit your feedback" : `View Feedback ${selectedRound}`}
               </Typography>
               <Typography variant="body1" color="text.secondary" sx={{ mt: 0.75 }}>
-                Your feedback helps us understand and improve the mentoring experience.
+                {isEditable
+                  ? "Your feedback helps us understand and improve the mentoring experience."
+                  : "You are viewing a previously submitted feedback or a closed round."}
               </Typography>
             </Box>
-            <Chip label={statusLabel} color={statusSeverity} variant="filled" sx={{ fontWeight: 800 }} />
+            <Chip
+              label={isEditable ? "Submission Open" : "Read Only"}
+              color={isEditable ? "success" : "default"}
+              variant="filled"
+              sx={{ fontWeight: 800 }}
+            />
           </Stack>
         </Card>
 
