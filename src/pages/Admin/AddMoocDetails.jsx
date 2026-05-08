@@ -85,7 +85,10 @@ const AddMoocDetails = () => {
       "Foundation of Python",
       "4",
       "Infosys Springboard",
-      "https://certificate-link.com"
+      "https://certificate-link.com",
+      "40",
+      "2024-01-05",
+      "2024-03-05"
     ];
 
     const csvContent = Papa.unparse([headers, exampleRow], { quotes: true });
@@ -149,6 +152,20 @@ const AddMoocDetails = () => {
     setFile(null);
   };
 
+  // ================= VALIDATE SEMESTER =================
+  const validateSemester = (semesterValue) => {
+    if (!semesterValue || semesterValue.toString().trim() === "") {
+      return { valid: true, normalizedValue: null };
+    }
+    
+    const parsed = parseInt(semesterValue, 10);
+    if (isNaN(parsed) || parsed < 1 || parsed > 8) {
+      return { valid: false, error: `Invalid semester: must be 1–8, got "${semesterValue}"` };
+    }
+    
+    return { valid: true, normalizedValue: parsed };
+  };
+
   // ================= PROCESS ROWS =================
   const processRows = async (rows) => {
     let success = 0;
@@ -170,6 +187,12 @@ const AddMoocDetails = () => {
       try {
         if (!row.USN) throw new Error("USN missing");
         if (!row.CourseName) throw new Error("Course Name missing");
+
+        // Validate semester if provided
+        const semesterValidation = validateSemester(row.Semester);
+        if (!semesterValidation.valid) {
+          throw new Error(semesterValidation.error);
+        }
 
         const response = await api.get(`/users/usn/${row.USN}`, {
           params: { _ts: Date.now() },
@@ -287,6 +310,7 @@ const AddMoocDetails = () => {
 
           <Typography variant="body2">• USN must exist in system</Typography>
           <Typography variant="body2">• Course Name is mandatory</Typography>
+          <Typography variant="body2">• Semester: integer 1–8 (provide blank if unknown)</Typography>
           <Typography variant="body2">• Platform should be Infosys Springboard / Coursera / NPTEL etc.</Typography>
           <Typography variant="body2">• Certificate Link must be valid URL</Typography>
         </Box>
