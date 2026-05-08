@@ -108,15 +108,18 @@ const FeedbackManagement = () => {
   const [semesterFilter, setSemesterFilter] = useState(() => localStorage.getItem("feedback_sem_filter") || "");
   const [selectedFeedbackRound, setSelectedFeedbackRound] = useState(() => Number(localStorage.getItem("feedback_round_filter")) || 1);
   
+  const [statusFilter, setStatusFilter] = useState("all");
   const [mentorFilter, setMentorFilter] = useState("");
   const [semesterDraft, setSemesterDraft] = useState("");
   const [roundDraft, setRoundDraft] = useState(1);
   const [enabledDraft, setEnabledDraft] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [studentFeedbacks, setStudentFeedbacks] = useState({});
   const [selectedRound, setSelectedRound] = useState(0);
   const [drillDownOpen, setDrillDownOpen] = useState(false);
+  const [isEditingInDialog, setIsEditingInDialog] = useState(false);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [editingFeedback, setEditingFeedback] = useState(null);
@@ -307,27 +310,7 @@ const FeedbackManagement = () => {
     setDrillDownOpen(false);
     setSelectedStudent(null);
     setStudentFeedbacks({});
-  };
-
-  const handleOpenSidebarEditor = (feedback = null) => {
-    setEditingFeedback(feedback);
-    if (feedback) {
-      editorMethods.reset({
-        mentorAccessibility: feedback.mentorAccessibility?.toString() || "",
-        mentorInteraction: feedback.mentorInteraction?.toString() || "",
-        academicHelp: feedback.academicHelp?.toString() || "",
-        mentorConcern: feedback.mentorConcern?.toString() || "",
-        listeningSkills: feedback.listeningSkills?.toString() || "",
-        professionalMotivation: feedback.professionalMotivation?.toString() || "",
-        barrierResolution: feedback.barrierResolution?.toString() || "",
-        systemEffectiveness: feedback.systemEffectiveness?.toString() || "",
-        continuationWillingness: feedback.continuationWillingness?.toString() || "",
-        awareOfPST: feedback.awareOfPST ? "yes" : "no",
-        awareOfPLT: feedback.awareOfPLT ? "yes" : "no",
-        remarks: feedback.remarks || "",
-      });
-    }
-    setSidebarOpen(true);
+    setIsEditMode(false);
   };
 
   const handleCloseSidebar = () => {
@@ -336,7 +319,26 @@ const FeedbackManagement = () => {
     editorMethods.reset();
   };
 
-  const handleSidebarSubmit = async (formData) => {
+  const handleOpenEditInDialog = (feedback) => {
+    setEditingFeedback(feedback);
+    editorMethods.reset({
+      mentorAccessibility: feedback.mentorAccessibility?.toString() || "",
+      mentorInteraction: feedback.mentorInteraction?.toString() || "",
+      academicHelp: feedback.academicHelp?.toString() || "",
+      mentorConcern: feedback.mentorConcern?.toString() || "",
+      listeningSkills: feedback.listeningSkills?.toString() || "",
+      professionalMotivation: feedback.professionalMotivation?.toString() || "",
+      barrierResolution: feedback.barrierResolution?.toString() || "",
+      systemEffectiveness: feedback.systemEffectiveness?.toString() || "",
+      continuationWillingness: feedback.continuationWillingness?.toString() || "",
+      awareOfPST: feedback.awareOfPST ? "yes" : "no",
+      awareOfPLT: feedback.awareOfPLT ? "yes" : "no",
+      remarks: feedback.remarks || "",
+    });
+    setIsEditMode(true);
+  };
+
+  const handleDialogSubmit = async (formData) => {
     try {
       if (editingFeedback) {
         await api.patch(`/feedback/${editingFeedback._id}`, {
@@ -354,15 +356,80 @@ const FeedbackManagement = () => {
           remarks: formData.remarks,
         });
         enqueueSnackbar("Feedback updated successfully", { variant: "success" });
+        
+        // Refresh local student feedback data
+        const response = await api.get(`/feedback/student/${selectedStudent.studentId}`, {
+          params: { semester: semesterFilter },
+        });
+        setStudentFeedbacks(response.data?.data?.feedbackByRound || {});
+        setIsEditMode(false);
+        
+        // Refresh main list
+        await loadFeedbackData({
+          semester: semesterFilter.trim(),
+          feedbackRound: selectedFeedbackRound,
+        });
       }
-      handleCloseSidebar();
+    } catch (error) {
+      logger.error("Error saving feedback:", error);
+      enqueueSnackbar(error.response?.data?.message || "Error saving feedback", { variant: "error" });
+    }
+  };
+
+  const handleSidebarSubmit = async (formData) => {
+    setSaving(true);
+    try {
+      if (editingFeedback) {
+        // Update existing feedback
+        await api.patch(`/feedback/${editingFeedback._id}`, {
+          mentorAccessibility: Number(formData.mentorAccessibility),
+          mentorInteraction: Number(formData.mentorInteraction),
+          academicHelp: Number(formData.academicHelp),
+          mentorConcern: Number(formData.mentorConcern),
+          listeningSkills: Number(formData.listeningSkills),
+          professionalMotivation: Number(formData.professionalMotivation),
+          barrierResolution: Number(formData.barrierResolution),
+          systemEffectiveness: Number(formData.systemEffectiveness),
+          continuationWillingness: Number(formData.continuationWillingness),
+          awareOfPST: formData.awareOfPST === "yes",
+          awareOfPLT: formData.awareOfPLT === "yes",
+          remarks: formData.remarks,
+        });
+        enqueueSnackbar("Feedback updated successfully", { variant: "success" });
+      } else {
+        // Create new feedback (would need studentId, semester, feedbackRound from context)
+        await api.post("/feedback", {
+          userId: editingFeedback?.userId,
+          semester: semesterFilter,
+          feedbackRound: selectedFeedbackRound,
+          mentorAccessibility: Number(formData.mentorAccessibility),
+          mentorInteraction: Number(formData.mentorInteraction),
+          academicHelp: Number(formData.academicHelp),
+          mentorConcern: Number(formData.mentorConcern),
+          listeningSkills: Number(formData.listeningSkills),
+          professionalMotivation: Number(formData.professionalMotivation),
+          barrierResolution: Number(formData.barrierResolution),
+          systemEffectiveness: Number(formData.systemEffectiveness),
+          continuationWillingness: Number(formData.continuationWillingness),
+          awareOfPST: formData.awareOfPST === "yes",
+          awareOfPLT: formData.awareOfPLT === "yes",
+          remarks: formData.remarks,
+        });
+        enqueueSnackbar("Feedback created successfully", { variant: "success" });
+      }
+      
+      // Refresh main list
       await loadFeedbackData({
         semester: semesterFilter.trim(),
         feedbackRound: selectedFeedbackRound,
       });
+      
+      handleCloseSidebar();
     } catch (error) {
       logger.error("Error saving feedback:", error);
       enqueueSnackbar(error.response?.data?.message || "Error saving feedback", { variant: "error" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -371,7 +438,7 @@ const FeedbackManagement = () => {
 
   const filteredStudents = useMemo(() => {
     // Merge allStudents with feedbacks to show status
-    const studentList = allStudents.map(student => {
+    let studentList = allStudents.map(student => {
       const feedback = feedbacks.find(f => f.userId?._id === student._id && f.feedbackRound === selectedFeedbackRound);
       return {
         ...student,
@@ -380,23 +447,40 @@ const FeedbackManagement = () => {
       };
     });
 
+    if (statusFilter === "responded") {
+      studentList = studentList.filter(s => s.hasResponded);
+    } else if (statusFilter === "pending") {
+      studentList = studentList.filter(s => !s.hasResponded);
+    }
+
     if (!searchTerm) return studentList;
     return studentList.filter((s) =>
       s.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.collegeCode?.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [allStudents, feedbacks, searchTerm, selectedFeedbackRound]);
+  }, [allStudents, feedbacks, searchTerm, selectedFeedbackRound, statusFilter]);
 
   const filteredMentorGroups = useMemo(() => {
-    if (!searchTerm) return mentorGroups;
-    return mentorGroups.map((group) => ({
+    let groups = mentorGroups;
+    if (statusFilter !== "all") {
+      groups = groups.map(group => ({
+        ...group,
+        mentees: group.mentees.filter(m => {
+          const hasFb = m.feedbacks?.some(f => f.feedbackRound === selectedFeedbackRound);
+          return statusFilter === "responded" ? hasFb : !hasFb;
+        })
+      }));
+    }
+
+    if (!searchTerm) return groups;
+    return groups.map((group) => ({
       ...group,
       mentees: group.mentees.filter((m) =>
         m.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         m.studentId?.toLowerCase().includes(searchTerm.toLowerCase())
       ),
     }));
-  }, [mentorGroups, searchTerm]);
+  }, [mentorGroups, searchTerm, statusFilter, selectedFeedbackRound]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -643,14 +727,14 @@ const FeedbackManagement = () => {
 
                     <Divider />
 
-                    {/* Row 2: Search & Mentor Filter */}
+                    {/* Row 2: Search, Status & Mentor Filter */}
                     <Box>
                       <Grid container spacing={2}>
-                        <Grid item xs={12} sm={isHodOrDirector ? 6 : 12}>
+                        <Grid item xs={12} sm={4}>
                           <TextField
                             fullWidth
                             size="small"
-                            placeholder="Search student by name or ID..."
+                            placeholder="Search student..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             InputProps={{
@@ -662,8 +746,22 @@ const FeedbackManagement = () => {
                             }}
                           />
                         </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Response Status</InputLabel>
+                            <Select
+                              label="Response Status"
+                              value={statusFilter}
+                              onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                              <MenuItem value="all">All Students</MenuItem>
+                              <MenuItem value="responded">Responded</MenuItem>
+                              <MenuItem value="pending">Pending</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
                         {isHodOrDirector && (
-                          <Grid item xs={12} sm={6}>
+                          <Grid item xs={12} sm={4}>
                             <FormControl fullWidth size="small">
                               <InputLabel>Filter by Mentor</InputLabel>
                               <Select
@@ -772,7 +870,7 @@ const FeedbackManagement = () => {
                                   <Stack direction="row" spacing={1} justifyContent="flex-end">
                                     <Button size="small" variant="text" onClick={() => handleOpenDrillDown(mentee)}>Details</Button>
                                     {canEditWindow && feedback && (
-                                      <IconButton size="small" onClick={() => handleOpenSidebarEditor(feedback)}>
+                                      <IconButton size="small" onClick={() => handleOpenEditInDialog(feedback)}>
                                         <SettingsIcon fontSize="small" />
                                       </IconButton>
                                     )}
@@ -820,7 +918,7 @@ const FeedbackManagement = () => {
                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
                                   <Button size="small" variant="text" onClick={() => handleOpenDrillDown({ studentId: student._id, studentName: student.name })}>Details</Button>
                                   {canEditWindow && student.hasResponded && (
-                                    <IconButton size="small" onClick={() => handleOpenSidebarEditor(student.feedback)}>
+                                    <IconButton size="small" onClick={() => handleOpenEditInDialog(student.feedback)}>
                                       <SettingsIcon fontSize="small" />
                                     </IconButton>
                                   )}
@@ -847,16 +945,133 @@ const FeedbackManagement = () => {
         </Stack>
 
         {/* Drill-Down Modal */}
-        <Dialog open={drillDownOpen} onClose={handleCloseDrillDown} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+         <Dialog 
+          open={drillDownOpen} 
+          onClose={handleCloseDrillDown} 
+          maxWidth="md" 
+          fullWidth 
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
           <DialogTitle sx={{ p: 3, pb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <Typography variant="h5" sx={{ fontWeight: 800 }}>
-              {selectedStudent?.studentName} <Typography component="span" variant="body1" color="text.secondary">Feedback Details</Typography>
+              {selectedStudent?.studentName} 
+              <Typography component="span" variant="body1" color="text.secondary" sx={{ ml: 1 }}>
+                {isEditingInDialog ? "Editing Feedback" : "Feedback Details"}
+              </Typography>
             </Typography>
-            <Chip label={`Semester ${semesterFilter}`} color="primary" variant="outlined" sx={{ fontWeight: 700 }} />
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip label={`Semester ${semesterFilter}`} color="primary" variant="outlined" sx={{ fontWeight: 700 }} />
+              {isEditingInDialog && (
+                <IconButton onClick={() => setIsEditingInDialog(false)}>
+                  <CloseIcon />
+                </IconButton>
+              )}
+            </Stack>
           </DialogTitle>
           <DialogContent sx={{ p: 3 }}>
             {Object.keys(studentFeedbacks).length === 0 ? (
-              <Alert severity="info" sx={{ borderRadius: 2 }}>No feedback found for this student in the selected semester.</Alert>
+              <Box sx={{ py: 4, textAlign: 'center' }}>
+                <Alert severity="warning" sx={{ borderRadius: 2, mb: 2, justifyContent: 'center' }}>
+                  Student has not responded to feedback for this window.
+                </Alert>
+                <Typography variant="body2" color="text.secondary">
+                  Status: Pending Response
+                </Typography>
+              </Box>
+            ) : isEditingInDialog ? (
+              <FormProvider methods={editorMethods} onSubmit={editorMethods.handleSubmit(handleDialogEditSubmit)}>
+                <Stack spacing={4}>
+                  <Box sx={{ maxHeight: '60vh', overflowY: 'auto', pr: 1 }}>
+                    <Stack spacing={4}>
+                      {FEEDBACK_QUESTIONS.map((question, idx) => (
+                        <Box key={question.field}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 24, height: 24, bgcolor: 'primary.main', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem' }}>
+                              {idx + 1}
+                            </Box>
+                            {question.label}
+                          </Typography>
+                          <Controller
+                            name={question.field}
+                            control={editorMethods.control}
+                            render={({ field }) => (
+                              <RadioGroup {...field} row sx={{ justifyContent: 'space-between', px: 1 }}>
+                                {RATING_OPTIONS.map((option) => (
+                                  <FormControlLabel
+                                    key={option.value}
+                                    value={option.value.toString()}
+                                    control={<Radio size="small" />}
+                                    label={
+                                      <Typography variant="caption" sx={{ fontWeight: 700 }}>{option.value}</Typography>
+                                    }
+                                    labelPlacement="bottom"
+                                    sx={{ m: 0 }}
+                                  />
+                                ))}
+                              </RadioGroup>
+                            )}
+                          />
+                        </Box>
+                      ))}
+
+                      <Divider />
+
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>Program Awareness</Typography>
+                        <Grid container spacing={2}>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" sx={{ mb: 1 }}>PST Awareness</Typography>
+                            <Controller
+                              name="awareOfPST"
+                              control={editorMethods.control}
+                              render={({ field }) => (
+                                <RadioGroup {...field} row>
+                                  <FormControlLabel value="yes" control={<Radio size="small" />} label="Yes" />
+                                  <FormControlLabel value="no" control={<Radio size="small" />} label="No" />
+                                </RadioGroup>
+                              )}
+                            />
+                          </Grid>
+                          <Grid item xs={6}>
+                            <Typography variant="body2" sx={{ mb: 1 }}>PLT Awareness</Typography>
+                            <Controller
+                              name="awareOfPLT"
+                              control={editorMethods.control}
+                              render={({ field }) => (
+                                <RadioGroup {...field} row>
+                                  <FormControlLabel value="yes" control={<Radio size="small" />} label="Yes" />
+                                  <FormControlLabel value="no" control={<Radio size="small" />} label="No" />
+                                </RadioGroup>
+                              )}
+                            />
+                          </Grid>
+                        </Grid>
+                      </Box>
+
+                      <RHFTextField
+                        name="remarks"
+                        label="Additional Remarks"
+                        multiline
+                        minRows={3}
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+                      />
+                    </Stack>
+                  </Box>
+
+                  <Stack direction="row" spacing={2} justifyContent="flex-end" sx={{ pt: 2 }}>
+                    <Button variant="outlined" onClick={() => setIsEditingInDialog(false)}>
+                      Cancel
+                    </Button>
+                    <LoadingButton
+                      type="submit"
+                      variant="contained"
+                      loading={editorMethods.formState.isSubmitting}
+                    >
+                      Save Changes
+                    </LoadingButton>
+                  </Stack>
+                </Stack>
+              </FormProvider>
             ) : (
               <>
                 <Tabs 
@@ -948,8 +1163,13 @@ const FeedbackManagement = () => {
                             variant="outlined"
                             startIcon={<SettingsIcon />}
                             onClick={() => {
-                              handleOpenSidebarEditor(studentFeedbacks[round]);
-                              handleCloseDrillDown();
+                              setEditingFeedback(studentFeedbacks[round]);
+                              setIsEditingInDialog(true);
+                              editorMethods.reset({
+                                ...studentFeedbacks[round],
+                                awareOfPST: studentFeedbacks[round].awareOfPST ? 'yes' : 'no',
+                                awareOfPLT: studentFeedbacks[round].awareOfPLT ? 'yes' : 'no'
+                              });
                             }}
                             fullWidth
                             sx={{ py: 1.5, borderRadius: 2, fontWeight: 700 }}
