@@ -55,6 +55,7 @@ import SettingsIcon from "@mui/icons-material/Settings";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import GroupIcon from "@mui/icons-material/Group";
 import UpdateIcon from "@mui/icons-material/Update";
+import CloseIcon from "@mui/icons-material/Close";
 
 const roundOptions = [
   { value: 1, label: "Feedback 1" },
@@ -648,10 +649,11 @@ const FeedbackManagement = () => {
                     {[
                       { label: "Responded", value: stats.responded || 0, color: "success", icon: <GroupIcon /> },
                       { label: "Enrolled", value: stats.totalEnrolled || 0, color: "primary", icon: <GroupIcon /> },
+                      { label: "Pending", value: (stats.totalEnrolled || 0) - (stats.responded || 0), color: "warning", icon: <UpdateIcon /> },
                       { label: "Response Rate", value: `${stats.responseRate || 0}%`, color: "info", icon: <AssessmentIcon /> },
-                      { label: "Avg. Score", value: `${(stats.averageScoreOverall || 0).toFixed(2)}/5.0`, color: "warning", icon: <AssessmentIcon /> },
+                      { label: "Avg. Score", value: `${(stats.averageScoreOverall || 0).toFixed(2)}/5.0`, color: "secondary", icon: <AssessmentIcon /> },
                     ].map((s) => (
-                      <Grid item xs={6} sm={3} key={s.label}>
+                      <Grid item xs={12} sm={6} md={4} key={s.label}>
                         <Card sx={{ 
                           p: 2.5, 
                           textAlign: "center", 
@@ -953,12 +955,14 @@ const FeedbackManagement = () => {
           PaperProps={{ sx: { borderRadius: 3 } }}
         >
           <DialogTitle sx={{ p: 3, pb: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="h5" sx={{ fontWeight: 800 }}>
-              {selectedStudent?.studentName} 
-              <Typography component="span" variant="body1" color="text.secondary" sx={{ ml: 1 }}>
+            <Box>
+              <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.5 }}>
+                {selectedStudent?.studentName}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
                 {isEditingInDialog ? "Editing Feedback" : "Feedback Details"}
               </Typography>
-            </Typography>
+            </Box>
             <Stack direction="row" spacing={1} alignItems="center">
               <Chip label={`Semester ${semesterFilter}`} color="primary" variant="outlined" sx={{ fontWeight: 700 }} />
               {isEditingInDialog && (
