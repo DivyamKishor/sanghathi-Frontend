@@ -113,21 +113,47 @@ const AddMarks = () => {
         semesterGroups.set(semester, []);
       }
 
-      // 🔥 LOOP THROUGH SUBJECT1 → SUBJECT9
-      for (let s = 0; s < 9; s++) {
-        const baseIndex = 2 + s * 6;
+      // Flexible parser: handle both older 6-col-per-subject and new VTU 7-col-per-subject templates.
+      // We iterate across subject columns until we reach the trailing metadata (passingDate, cgpa).
+      let idx = 2; // start after Semester, USN
+      const subjects = [];
+      // assume last two columns are passingDate and cgpa when present
+      const trailing = 2;
+      while (idx + 3 < row.length - trailing) {
+        const subjectCode = row[idx]?.toString().trim();
+        const subjectName = row[idx + 1]?.toString().trim();
+        if (!subjectCode || !subjectName) break;
 
-        const subjectCode = row[baseIndex];
-        const subjectName = row[baseIndex + 1];
-        const internalMarks = parseInt(row[baseIndex + 2]);
-        const externalMarks = parseInt(row[baseIndex + 3]);
-        const attempt = parseInt(row[baseIndex + 4]);
-        const result = row[baseIndex + 5]?.toUpperCase();
+        const internalMarks = parseInt(row[idx + 2]);
+        const externalMarks = parseInt(row[idx + 3]);
 
-        // Skip empty subjects
-        if (!subjectCode || !subjectName) continue;
+        // Heuristic: check if next column is Total (internal+external) or Attempt
+        const possibleTotal = row[idx + 4];
+        let attempt;
+        let result;
+        let consumed = 6; // default for old format (code,name,int,ext,attempt,result)
 
-        semesterGroups.get(semester).push({
+        if (possibleTotal !== undefined && possibleTotal !== null) {
+          const asNum = parseInt(possibleTotal);
+          if (!isNaN(asNum) && asNum === ((isNaN(internalMarks) ? 0 : internalMarks) + (isNaN(externalMarks) ? 0 : externalMarks))) {
+            // This is the Total column (new VTU template). Consume total, then attempt, then result
+            attempt = parseInt(row[idx + 5]);
+            result = row[idx + 6]?.toUpperCase();
+            consumed = 7; // code,name,int,ext,total,attempt,result
+          } else {
+            // Not a total column — treat as attempt
+            attempt = parseInt(possibleTotal);
+            result = row[idx + 5]?.toUpperCase();
+            consumed = 6; // code,name,int,ext,attempt,result
+          }
+        } else {
+          // Fallback: try to read attempt/result positions
+          attempt = parseInt(row[idx + 4]);
+          result = row[idx + 5]?.toUpperCase();
+          consumed = 6;
+        }
+
+        subjects.push({
           subjectCode,
           subjectName,
           internalMarks: isNaN(internalMarks) ? 0 : internalMarks,
@@ -135,17 +161,21 @@ const AddMarks = () => {
           attempt: isNaN(attempt) ? 1 : attempt,
           result: result === "PASS" || result === "FAIL" ? result : "FAIL",
         });
+
+        idx += consumed;
       }
 
-      // Optional global fields
+      // attach parsed subjects to semester group
+      semesterGroups.get(semester).push(...subjects);
+
+      // Optional global fields (assume last two columns when present)
       const passingDate = row[row.length - 2];
       const cgpa = parseFloat(row[row.length - 1]);
 
-      // Attach metadata to first subject (used later)
-      const subjects = semesterGroups.get(semester);
-      if (subjects.length > 0) {
-        subjects[0].passingDate = passingDate || null;
-        subjects[0].cgpa = isNaN(cgpa) ? null : cgpa;
+      const semesterSubjects = semesterGroups.get(semester);
+      if (semesterSubjects.length > 0) {
+        semesterSubjects[0].passingDate = passingDate || null;
+        semesterSubjects[0].cgpa = isNaN(cgpa) ? null : cgpa;
       }
     }
 
