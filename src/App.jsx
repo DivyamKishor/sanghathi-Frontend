@@ -58,6 +58,7 @@ const FeedbackForm = lazy(() => import("./pages/Feedback/feedback"));
 const FeedbackManagement = lazy(() => import("./pages/Feedback/FeedbackManagement"));
 const MyChatBot = lazy(() => import("./mychatbot"));
 const Updates = lazy(() => import("./pages/Updates"));
+const FacultySwotAnalysis = lazy(() => import("./pages/Faculty/FacultySwotAnalysis"));
 
 function App() {
   // Track page views on route change using Google Analytics GA4
@@ -147,6 +148,14 @@ function App() {
                     element={
                       <ProtectedRouteWrapper allowedRoles={["faculty"]}>
                         <LazyLoadWrapper component={FacultyDashboard} />
+                      </ProtectedRouteWrapper>
+                    }
+                  />
+                  <Route
+                    path="/faculty/swot-analysis"
+                    element={
+                      <ProtectedRouteWrapper allowedRoles={["faculty"]}>
+                        <LazyLoadWrapper component={FacultySwotAnalysis} />
                       </ProtectedRouteWrapper>
                     }
                   />

@@ -213,6 +213,13 @@ const FacultyDashboard = () => {
                 link="/campus-buddy"
               />
             </Grid>
+            <Grid item xs={12} sm={6} md={isLight ? 6 : 6} lg={isLight ? 4 : 4}>
+              <StudentTile
+                title="SWOT Analysis"
+                icon={<SummarizeOutlinedIcon />}
+                link="/faculty/swot-analysis"
+              />
+            </Grid>
           </Grid>
         </Container>
       </Box>
