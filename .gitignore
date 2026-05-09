@@ -7,6 +7,7 @@
 *.md
 !README.md
 !pull_request_template.md
+!/docs/dev-logs/*.md
 
 # testing
 /coverage
@@ -14,7 +15,8 @@
 # production
 /build
 /dist
-/docs
+/docs/*
+!/docs/dev-logs/
 # misc
 .DS_Store
 .env.local
