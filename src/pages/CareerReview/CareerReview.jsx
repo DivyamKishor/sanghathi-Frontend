@@ -97,12 +97,12 @@ export default function CareerReview() {
       {
         value: "Mooc Courses",
         icon: <Iconify icon={"ic:round-account-box"} width={20} height={20} />,
-        component: <Mooc />,
+        component: <Mooc resolvedSemester={semester} />,
       },
       {
         value: "Mini Project",
         icon: <Iconify icon={"ic:round-account-box"} width={20} height={20} />,
-        component: <MiniProject />,
+        component: <MiniProject resolvedSemester={semester} />,
       },
       {
         value: "Activity",

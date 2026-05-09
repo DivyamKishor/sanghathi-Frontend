@@ -1,22 +1,50 @@
-import React, { useEffect, useState, useCallback, useContext } from "react";
+import React, { useEffect, useState, useCallback, useContext, useMemo } from "react";
 import { useSnackbar } from "notistack";
 import api from "../../utils/axios";
 import { useForm, useFieldArray } from "react-hook-form";
 import { AuthContext } from "../../context/AuthContext";
-import { Box, Grid, Card, Stack, Button, IconButton, Typography, TextField } from "@mui/material";
+import { Box, Grid, Card, CardContent, Stack, Button, IconButton, Typography, TextField, Chip, FormControl, InputLabel, MenuItem, Select } from "@mui/material";
 import { LoadingButton } from "@mui/lab";
 import { Delete as DeleteIcon } from "@mui/icons-material";
 import { FormProvider, RHFTextField } from "../../components/hook-form";
 import { useSearchParams } from "react-router-dom";
 
 import logger from "../../utils/logger.js";
-export default function MiniProject() {
+const parseSemesterValue = (value, fallback = null) => {
+  const candidate = value !== undefined && value !== null && `${value}`.trim() !== ""
+    ? Number(value)
+    : Number(fallback);
+
+  return Number.isInteger(candidate) && candidate >= 1 && candidate <= 8 ? candidate : null;
+};
+
+const normalizeDateForInput = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime()) || parsedDate.getTime() > Date.now()) {
+    return "";
+  }
+
+  return parsedDate.toISOString().split("T")[0];
+};
+
+const todayIso = new Date().toISOString().split("T")[0];
+
+export default function MiniProject({ resolvedSemester = null }) {
   const { enqueueSnackbar } = useSnackbar();
     const { user } = useContext(AuthContext);
     const [searchParams] = useSearchParams();
     const menteeId = searchParams.get('menteeId');
     logger.info("User : ",user);
     logger.info("id: ",menteeId);
+    const [semesterFilter, setSemesterFilter] = useState("all");
+    const normalizedResolvedSemester = useMemo(
+      () => parseSemesterValue(resolvedSemester),
+      [resolvedSemester]
+    );
     
     const methods = useForm({
       defaultValues: {
@@ -43,20 +71,20 @@ export default function MiniProject() {
         if (data && Array.isArray(data.miniproject)) {
           const formattedMiniProject = data.miniproject.map((miniproject) => ({
             ...miniproject,
-            semester: miniproject.semester || "",
-            startDate: miniproject.startDate ? new Date(miniproject.startDate).toISOString().split("T")[0] : "",
-            completedDate: miniproject.completedDate ? new Date(miniproject.completedDate).toISOString().split("T")[0] : "",
+            semester: parseSemesterValue(miniproject.semester, normalizedResolvedSemester)?.toString() || "",
+            startDate: normalizeDateForInput(miniproject.startDate),
+            completedDate: normalizeDateForInput(miniproject.completedDate),
           }));
           logger.info("Formatted miniproject:", formattedMiniProject);
           reset({ miniproject: formattedMiniProject });
         } else {
           logger.warn("No miniproject data found for this user");
-          reset({ miniproject: [{ title: "", semester: "", manHours: "", startDate: null, completedDate: null }] });
+          reset({ miniproject: [{ title: "", semester: normalizedResolvedSemester ? String(normalizedResolvedSemester) : "", manHours: "", startDate: null, completedDate: null }] });
         }
       } catch (error) {
         logger.info("Error fetching miniproject data:", error);
       }
-    }, [user._id, reset, enqueueSnackbar]);
+    }, [user._id, reset, enqueueSnackbar, menteeId, normalizedResolvedSemester]);
     
     useEffect(() => {
       fetchMiniProjects();
@@ -65,6 +93,54 @@ export default function MiniProject() {
     const handleReset = () => {
       reset();
     };
+
+    const semesterOptions = useMemo(() => {
+      const options = new Set();
+
+      (methods.watch("miniproject") || []).forEach((entry) => {
+        const semester = parseSemesterValue(entry?.semester, normalizedResolvedSemester);
+        if (semester) {
+          options.add(String(semester));
+        }
+      });
+
+      if (normalizedResolvedSemester) {
+        options.add(String(normalizedResolvedSemester));
+      }
+
+      return Array.from(options).sort((left, right) => Number(left) - Number(right));
+    }, [methods, normalizedResolvedSemester]);
+
+    const visibleIndices = useMemo(() => {
+      const currentValues = methods.watch("miniproject") || [];
+
+      return fields.reduce((indices, field, index) => {
+        const semester = parseSemesterValue(currentValues?.[index]?.semester, normalizedResolvedSemester);
+        const matches = semesterFilter === "all"
+          || (semesterFilter === "unspecified" && semester === null)
+          || (semester !== null && String(semester) === semesterFilter);
+
+        if (matches) {
+          indices.push(index);
+        }
+
+        return indices;
+      }, []);
+    }, [fields, methods, semesterFilter, normalizedResolvedSemester]);
+
+    const onSubmitWithNormalization = useCallback((formData) => {
+      const payload = {
+        miniproject: (formData.miniproject || []).map((item) => ({
+          ...item,
+          semester: parseSemesterValue(item.semester, normalizedResolvedSemester),
+          startDate: item.startDate && new Date(item.startDate).getTime() <= Date.now() ? item.startDate : null,
+          completedDate: item.completedDate && new Date(item.completedDate).getTime() <= Date.now() ? item.completedDate : null,
+        })),
+        userId: user._id,
+      };
+
+      return onSubmit(payload);
+    }, [normalizedResolvedSemester, onSubmit, user._id]);
   
     const onSubmit = useCallback(
       async (formData) => {
@@ -85,79 +161,127 @@ export default function MiniProject() {
     );
 
   return (
-    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
-    <Card sx={{ p: 3 }}>
-      <Grid container spacing={2}>
-        {(() => {
-          const groups = {};
-          fields.forEach((item, idx) => {
-            const sem = item.semester || "Unspecified";
-            if (!groups[sem]) groups[sem] = [];
-            groups[sem].push({ item, idx });
-          });
+    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmitWithNormalization)}>
+      <Card sx={{ p: 3 }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          sx={{ mb: 3, alignItems: { md: "center" }, justifyContent: "space-between" }}
+        >
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              Mini Project
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Semester-filtered cards with date safety checks.
+            </Typography>
+          </Box>
 
-          return Object.keys(groups).map((sem) => (
-            <Box key={sem} sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>{sem === "" || sem === "Unspecified" ? "Unspecified Semester" : `Semester: ${sem}`}</Typography>
-              {groups[sem].map(({ item, idx }) => (
-                <Grid container spacing={2} key={item.id} alignItems="center" sx={{ mb: 1, mt: 1 }}>
-                  <Grid item xs={1}>
-                    <TextField disabled value={idx + 1} label="Sl. No." variant="outlined" />
-                  </Grid>
-                  <Grid item xs={2}>
-                    <RHFTextField name={`miniproject[${idx}].semester`} label="Semester" fullWidth />
-                  </Grid>
-                  <Grid item xs={3}>
-                    <RHFTextField name={`miniproject[${idx}].title`} label="Miniproject Title" fullWidth />
-                  </Grid>
-                  <Grid item xs={3}>
-                    <RHFTextField name={`miniproject[${idx}].manHours`} label="Man Hours" fullWidth />
-                  </Grid>
-                  <Grid item xs={2}>
-                    <RHFTextField name={`miniproject[${idx}].startDate`} label="Start Date" type="date" InputLabelProps={{ shrink: true }} fullWidth />
-                  </Grid>
-                  <Grid item xs={2}>
-                    <RHFTextField name={`miniproject[${idx}].completedDate`} label="Completed Date" type="date" InputLabelProps={{ shrink: true }} fullWidth />
-                  </Grid>
-                  <Grid item xs={1}>
-                    <IconButton color="error" onClick={() => remove(idx)} sx={{ mt: 1 }}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </Grid>
-                </Grid>
-              ))}
-              <Box sx={{ textAlign: 'right', mb: 2 }}>
-                <Button size="small" variant="outlined" onClick={() => append({ title: "", semester: sem === 'Unspecified' ? '' : sem, manHours: "", startDate: null, completedDate: null })}>Add Row to this semester</Button>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip size="small" variant="outlined" label={`Records: ${fields.length}`} />
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel id="mini-semester-filter-label">Semester</InputLabel>
+              <Select
+                labelId="mini-semester-filter-label"
+                value={semesterFilter}
+                label="Semester"
+                onChange={(event) => setSemesterFilter(event.target.value)}
+              >
+                <MenuItem value="all">All semesters</MenuItem>
+                <MenuItem value="unspecified">Unspecified</MenuItem>
+                {semesterOptions.map((semester) => (
+                  <MenuItem key={semester} value={semester}>
+                    Semester {semester}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Stack>
+        </Stack>
+
+        <Grid container spacing={2}>
+          {visibleIndices.length > 0 ? visibleIndices.map((idx) => {
+            const semesterValue = parseSemesterValue(methods.watch(`miniproject.${idx}.semester`), normalizedResolvedSemester);
+            const semesterLabel = semesterValue ? `Semester ${semesterValue}` : "Unspecified Semester";
+
+            return (
+              <Grid item xs={12} key={fields[idx].id}>
+                <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                  <CardContent>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1} justifyContent="space-between" sx={{ mb: 2 }}>
+                      <Box>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                          {semesterLabel}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Mini project record #{idx + 1}
+                        </Typography>
+                      </Box>
+                      <IconButton color="error" onClick={() => remove(idx)} sx={{ alignSelf: { sm: "flex-start" } }}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Stack>
+
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={2}>
+                        <TextField disabled value={idx + 1} label="Sl. No." variant="outlined" fullWidth />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <RHFTextField name={`miniproject[${idx}].semester`} label="Semester" fullWidth />
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <RHFTextField name={`miniproject[${idx}].title`} label="Miniproject Title" fullWidth />
+                      </Grid>
+                      <Grid item xs={12} sm={3}>
+                        <RHFTextField name={`miniproject[${idx}].manHours`} label="Man Hours" fullWidth />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <RHFTextField name={`miniproject[${idx}].startDate`} label="Start Date" type="date" InputLabelProps={{ shrink: true }} inputProps={{ max: todayIso }} fullWidth />
+                      </Grid>
+                      <Grid item xs={12} sm={2}>
+                        <RHFTextField name={`miniproject[${idx}].completedDate`} label="Completed Date" type="date" InputLabelProps={{ shrink: true }} inputProps={{ max: todayIso }} fullWidth />
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          }) : (
+            <Grid item xs={12}>
+              <Box sx={{ py: 4, textAlign: "center" }}>
+                <Typography variant="body2" color="text.secondary">
+                  No mini project records match the selected semester.
+                </Typography>
               </Box>
-            </Box>
-          ));
-        })()}
+            </Grid>
+          )}
+
           <Grid item xs={12}>
             <Button 
               variant="contained" 
-              onClick={() => append({  title: "",manHours: "",startDate: null,completedDate: null, })} 
+              onClick={() => append({ title: "", semester: normalizedResolvedSemester ? String(normalizedResolvedSemester) : "", manHours: "", startDate: null, completedDate: null })} 
               sx={{ mt: 2, display: "block", mx: "auto" }}>
               Add Row
             </Button>
           </Grid>
-  <Grid item xs={12}>
-      <Stack direction="row" spacing={2} justifyContent="flex-end">
-        <Box display="flex" gap={1}>
-          {import.meta.env.MODE === "development" && (
-            <LoadingButton 
-            variant="outlined" 
-            onClick={handleReset}>
-              Reset
-            </LoadingButton>
-          )}
-          <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
-            Save
-          </LoadingButton>
-        </Box>
-      </Stack>
-  </Grid>
-</Grid>
-</Card>
-</FormProvider>
-);
+          <Grid item xs={12}>
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
+              <Box display="flex" gap={1}>
+                {import.meta.env.MODE === "development" && (
+                  <LoadingButton 
+                  variant="outlined" 
+                  onClick={handleReset}>
+                    Reset
+                  </LoadingButton>
+                )}
+                <LoadingButton type="submit" variant="contained" loading={isSubmitting}>
+                  Save
+                </LoadingButton>
+              </Box>
+            </Stack>
+          </Grid>
+        </Grid>
+      </Card>
+    </FormProvider>
+  );
 }
