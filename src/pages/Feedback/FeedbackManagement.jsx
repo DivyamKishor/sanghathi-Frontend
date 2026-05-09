@@ -161,8 +161,8 @@ const FeedbackManagement = () => {
       setFeedbackWindow(windowData);
 
       // 2. Prepare active parameters (provided query OR existing filter OR window default)
-      const activeSem = query.semester || semesterFilter || windowData?.semester || "";
-      const activeRound = query.feedbackRound || selectedFeedbackRound || windowData?.feedbackRound || 1;
+      let activeSem = query.semester || semesterFilter || windowData?.semester || "";
+      let activeRound = query.feedbackRound || selectedFeedbackRound || windowData?.feedbackRound || 1;
 
       // 3. Update the filter UI state if it's the first load or if we want to sync with window
       if (!semesterFilter && activeSem) setSemesterFilter(activeSem.toString());
@@ -180,7 +180,28 @@ const FeedbackManagement = () => {
         } 
       });
       const overviewData = overviewResponse.data?.data || {};
+      const fallbackSelection = overviewData.selection || null;
+
+      if ((!activeSem || !query.semester) && fallbackSelection?.semester) {
+        activeSem = fallbackSelection.semester.toString();
+        if (!semesterFilter) {
+          setSemesterFilter(activeSem);
+        }
+      }
+
+      if ((!query.feedbackRound || !selectedFeedbackRound) && fallbackSelection?.feedbackRound) {
+        activeRound = Number(fallbackSelection.feedbackRound) || activeRound;
+        if (!selectedFeedbackRound || !query.feedbackRound) {
+          setSelectedFeedbackRound(activeRound);
+        }
+      }
+
       setFeedbacks(overviewData.feedbacks || []);
+      logger.info("Loaded feedback overview", {
+        window: windowData,
+        selection: fallbackSelection,
+        feedbackCount: overviewData.feedbacks?.length || 0,
+      });
 
       // 5. Fetch stats if semester is available
       if (activeSem) {
@@ -215,6 +236,8 @@ const FeedbackManagement = () => {
           logger.error("Error fetching students:", err);
           setAllStudents([]);
         }
+      } else {
+        setAllStudents([]);
       }
 
       // 7. For HOD/Director, organize feedback data into mentee lists
@@ -703,12 +726,16 @@ const FeedbackManagement = () => {
                       </LoadingButton>
 
                       <Alert
-                        severity={feedbackWindow?.isEnabled ? "success" : "info"}
+                        severity={feedbackWindow ? (feedbackWindow.isEnabled ? "success" : "warning") : "info"}
                         sx={{ borderRadius: 2, fontWeight: 600 }}
                       >
-                        {feedbackWindow?.isEnabled
-                          ? `Live: Semester ${feedbackWindow.semester} - Round ${feedbackWindow.feedbackRound}`
-                          : "No active feedback window"}
+                        {feedbackWindow
+                          ? feedbackWindow.isEnabled
+                            ? `Live: Semester ${feedbackWindow.semester} - Round ${feedbackWindow.feedbackRound}`
+                            : `Feedback window is closed for Semester ${feedbackWindow.semester} - Round ${feedbackWindow.feedbackRound}`
+                          : feedbacks.length > 0
+                            ? "No feedback window is currently configured, showing the latest submitted feedback"
+                            : "No feedback window has been created"}
                       </Alert>
                     </Stack>
                   </Stack>
@@ -861,13 +888,17 @@ const FeedbackManagement = () => {
               Response Analysis
             </Typography>
 
-            {!semesterFilter ? (
+            {!semesterFilter && !feedbackWindow && feedbacks.length === 0 ? (
               <Paper sx={{ p: 8, textAlign: "center", borderRadius: 4, backgroundColor: alpha(theme.palette.grey[500], 0.05), border: `2px dashed ${theme.palette.divider}` }}>
-                <Typography variant="h6" color="text.secondary">Please select a semester and click "Search" to view feedback data.</Typography>
+                <Typography variant="h6" color="text.secondary">No feedback window has been created.</Typography>
               </Paper>
             ) : !loading && ((isHodOrDirector && filteredMentorGroups.length === 0) || (!isHodOrDirector && filteredStudents.length === 0)) ? (
               <Paper sx={{ p: 8, textAlign: "center", borderRadius: 4, backgroundColor: alpha(theme.palette.grey[500], 0.05), border: `2px dashed ${theme.palette.divider}` }}>
-                <Typography variant="h6" color="text.secondary">No responses found for Semester {semesterFilter}, Feedback {selectedFeedbackRound}.</Typography>
+                <Typography variant="h6" color="text.secondary">
+                  {feedbackWindow?.isEnabled === false
+                    ? `Feedback window is closed for Semester ${feedbackWindow.semester || semesterFilter || "N/A"}, Feedback ${selectedFeedbackRound}.`
+                    : `No responses found for Semester ${semesterFilter}, Feedback ${selectedFeedbackRound}.`}
+                </Typography>
               </Paper>
             ) : loading ? (
               <Stack spacing={2}>
