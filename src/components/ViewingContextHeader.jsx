@@ -20,7 +20,7 @@ import {
   School as SchoolIcon
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../utils/axios';
 import { AuthContext } from '../context/AuthContext';
 
 const ViewingContextHeader = () => {
@@ -44,10 +44,7 @@ const ViewingContextHeader = () => {
 
       try {
         setLoading(true);
-        const token = localStorage.getItem('token');
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/users/${menteeId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const response = await api.get(`/users/${menteeId}`);
         if (response.data.status === 'success') {
           setTargetUser(response.data.data.user);
         }

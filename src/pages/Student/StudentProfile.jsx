@@ -10,6 +10,8 @@ import useTabs from "../../hooks/useTabs";
 // components
 import Page from "../../components/Page";
 import Iconify from "../../components/Iconify";
+import Thread from "../Thread/Thread";
+import { Box as MuiBox, Paper as MuiPaper, Typography as MuiTypography } from "@mui/material";
 // sections
 import StudentDetailsForm from "./StudentDetailsForm";
 import AdmissionDetails from "./AdmissionDetails";
@@ -65,6 +67,33 @@ export default function StudentProfile() {
       icon: <Iconify icon={"eva:share-fill"} width={20} height={20} />,
       component: <AdmissionDetails colorMode={colorMode} />,
     },
+    {
+      value: "Threads",
+      icon: <Iconify icon={"ic:round-forum"} width={20} height={20} />,
+      component: (
+        <MuiBox sx={{ mt: 2 }}>
+          <MuiPaper
+            elevation={0}
+            sx={{
+              p: { xs: 2, sm: 3 },
+              mb: 2,
+              borderRadius: 2,
+              backgroundColor: isLight
+                ? 'rgba(255, 255, 255, 0.85)'
+                : alpha(theme.palette.background.paper, 0.8),
+            }}
+          >
+            <MuiTypography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+              Your Threads
+            </MuiTypography>
+            <MuiTypography variant="body2" color="text.secondary">
+              Review the thread list with your mentor and open any thread to see the full conversation.
+            </MuiTypography>
+          </MuiPaper>
+          <Thread />
+        </MuiBox>
+      ),
+    },
   ];
 
   // Use only student details tab for admin edit mode, all tabs for regular student view
@@ -105,7 +134,7 @@ export default function StudentProfile() {
               Student Profile
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Manage personal, admission, family, contact, and academic details.
+              Manage personal, admission, family, contact, academic, and thread details.
             </Typography>
           </Box>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Container,
   Paper,
@@ -25,6 +25,7 @@ import {
   Breadcrumbs,
   Link as MuiLink,
   Grid,
+  Card,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -37,8 +38,6 @@ import Page from "../../components/Page";
 import api from "../../utils/axios";
 import { AuthContext } from "../../context/AuthContext";
 import { getAvatarSrc, getAvatarFallbackText } from "../../utils/avatarResolver";
-import { Link } from "react-router-dom";
-import { MessageList } from "../Thread/Message/Message";
 
 const ThreadReportsByStudent = () => {
   const theme = useTheme();
@@ -58,7 +57,6 @@ const ThreadReportsByStudent = () => {
   const [dateFromFilter, setDateFromFilter] = useState("");
   const [dateToFilter, setDateToFilter] = useState("");
 
-  // Fetch mentor and student info
   useEffect(() => {
     const fetchUserInfo = async () => {
       try {
@@ -74,10 +72,11 @@ const ThreadReportsByStudent = () => {
       }
     };
 
-    fetchUserInfo();
+    if (mentorId && studentId) {
+      fetchUserInfo();
+    }
   }, [mentorId, studentId, enqueueSnackbar]);
 
-  // Fetch threads
   useEffect(() => {
     const fetchThreads = async () => {
       try {
@@ -103,15 +102,10 @@ const ThreadReportsByStudent = () => {
     }
   }, [mentorId, studentId, enqueueSnackbar]);
 
-  // Filter threads
   const filteredThreads = threads.filter((thread) => {
     const searchMatch =
-      (thread?.title || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (thread?.description || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
+      (thread?.title || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (thread?.description || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     const statusMatch = !statusFilter || thread?.status === statusFilter;
     const categoryMatch = !categoryFilter || thread?.topic === categoryFilter;
@@ -121,23 +115,19 @@ const ThreadReportsByStudent = () => {
     const toDate = dateToFilter ? new Date(dateToFilter) : null;
 
     const dateMatch =
-      (!fromDate || threadDate >= fromDate) &&
-      (!toDate || threadDate <= toDate);
+      (!fromDate || threadDate >= fromDate) && (!toDate || threadDate <= toDate);
 
     return searchMatch && statusMatch && categoryMatch && dateMatch;
   });
 
-  // Get unique categories
-  const categories = [
-    ...new Set(threads.map((t) => t?.topic).filter(Boolean)),
-  ];
+  const categories = [...new Set(threads.map((thread) => thread?.topic).filter(Boolean))];
 
   const handleViewThread = (thread) => {
     navigate(`/threads/${thread._id}?menteeId=${studentId}`);
   };
 
   const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
+    switch ((status || "").toLowerCase()) {
       case "open":
         return "#4caf50";
       case "closed":
@@ -151,18 +141,18 @@ const ThreadReportsByStudent = () => {
 
   return (
     <Page title={`Threads - ${studentInfo?.name || "Student"}`}>
-      <Box
-        sx={{
-          pt: 1,
-          pb: 5,
-        }}
-      >
+      <Box sx={{ pt: 1, pb: 5 }}>
         <Container maxWidth="lg" sx={{ px: { xs: 1.5, sm: 0 } }}>
-          <Card elevation={0} sx={{ p: 3, borderRadius: 2, border: `1px solid ${alpha(theme.palette.divider, 0.1)}` }}>
-            {/* Header */}
+          <Card
+            elevation={0}
+            sx={{
+              p: 3,
+              borderRadius: 2,
+              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            }}
+          >
             <Box sx={{ mb: 3 }}>
               <Stack spacing={2}>
-                {/* Breadcrumbs */}
                 <Breadcrumbs sx={{ mb: 1 }}>
                   <MuiLink
                     component={Link}
@@ -187,59 +177,42 @@ const ThreadReportsByStudent = () => {
                   </Typography>
                 </Breadcrumbs>
 
-                {/* Title with avatars */}
-                <Box>
-                  <Stack spacing={1.5}>
-                    <Stack direction="row" alignItems="center" spacing={2}>
-                      <AvatarGroup max={2}>
-                        <Avatar
-                          src={getAvatarSrc(mentorInfo) || undefined}
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            bgcolor: isLight
-                              ? theme.palette.primary.main
-                              : theme.palette.info.main,
-                          }}
-                        >
-                          {!getAvatarSrc(mentorInfo)
-                            ? getAvatarFallbackText(mentorInfo?.name)
-                            : null}
-                        </Avatar>
-                        <Avatar
-                          src={getAvatarSrc(studentInfo) || undefined}
-                          sx={{
-                            width: 40,
-                            height: 40,
-                            bgcolor: isLight
-                              ? theme.palette.primary.main
-                              : theme.palette.info.main,
-                          }}
-                        >
-                          {!getAvatarSrc(studentInfo)
-                            ? getAvatarFallbackText(studentInfo?.name)
-                            : null}
-                        </Avatar>
-                      </AvatarGroup>
-                      <Box>
-                        <Typography
-                          variant="h5"
-                          sx={{
-                            fontWeight: 700,
-                            color: theme.palette.text.primary,
-                          }}
-                        >
-                          Threads Between Mentor &amp; Mentee
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Mentor: {mentorInfo?.name} &amp; Mentee: {studentInfo?.name} {studentInfo?.usn || studentInfo?.profile?.usn ? `(USN: ${studentInfo.usn || studentInfo.profile.usn})` : ""}
-                        </Typography>
-                      </Box>
-                    </Stack>
-                  </Stack>
-                </Box>
+                <Stack direction="row" alignItems="center" spacing={2}>
+                  <AvatarGroup max={2}>
+                    <Avatar
+                      src={getAvatarSrc(mentorInfo) || undefined}
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        bgcolor: isLight ? theme.palette.primary.main : theme.palette.info.main,
+                      }}
+                    >
+                      {!getAvatarSrc(mentorInfo) ? getAvatarFallbackText(mentorInfo?.name) : null}
+                    </Avatar>
+                    <Avatar
+                      src={getAvatarSrc(studentInfo) || undefined}
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        bgcolor: isLight ? theme.palette.primary.main : theme.palette.info.main,
+                      }}
+                    >
+                      {!getAvatarSrc(studentInfo) ? getAvatarFallbackText(studentInfo?.name) : null}
+                    </Avatar>
+                  </AvatarGroup>
+                  <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: theme.palette.text.primary }}>
+                      Threads Between Mentor &amp; Mentee
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Mentor: {mentorInfo?.name || "N/A"} &amp; Mentee: {studentInfo?.name || "N/A"}
+                      {studentInfo?.usn || studentInfo?.profile?.usn
+                        ? ` (USN: ${studentInfo?.usn || studentInfo?.profile?.usn})`
+                        : ""}
+                    </Typography>
+                  </Box>
+                </Stack>
 
-                {/* Filters */}
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6} md={3}>
                     <TextField
@@ -284,9 +257,9 @@ const ThreadReportsByStudent = () => {
                       onChange={(e) => setCategoryFilter(e.target.value)}
                     >
                       <MenuItem value="">All Categories</MenuItem>
-                      {categories.map((cat) => (
-                        <MenuItem key={cat} value={cat}>
-                          {cat || "Uncategorized"}
+                      {categories.map((category) => (
+                        <MenuItem key={category} value={category}>
+                          {category || "Uncategorized"}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -333,7 +306,6 @@ const ThreadReportsByStudent = () => {
               </Stack>
             </Box>
 
-            {/* Back Button */}
             <Button
               startIcon={<ArrowBackIcon />}
               onClick={() => navigate(`/hod/thread-reports/${mentorId}`)}
@@ -343,7 +315,6 @@ const ThreadReportsByStudent = () => {
               Back to Mentees
             </Button>
 
-            {/* Threads Table */}
             {isLoading ? (
               <Box
                 sx={{
@@ -403,11 +374,7 @@ const ThreadReportsByStudent = () => {
                         }}
                       >
                         <TableCell>
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 500, maxWidth: 200 }}
-                            noWrap
-                          >
+                          <Typography variant="body2" sx={{ fontWeight: 500, maxWidth: 200 }} noWrap>
                             {thread?.title || "N/A"}
                           </Typography>
                         </TableCell>
@@ -480,65 +447,18 @@ const ThreadReportsByStudent = () => {
                     mb: 2,
                     opacity: 0.5,
                   }}
-                        <Chip
-                          icon={<MessageRoundedIcon />}
-                          label={thread?.messageCount || 0}
-                          variant="outlined"
-                          size="small"
-                        />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Button
-                          variant="contained"
-                          size="small"
-                          onClick={() => handleViewThread(thread)}
-                          color={isLight ? "primary" : "info"}
-                        >
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 4,
-                textAlign: "center",
-                borderRadius: 2,
-                backgroundColor: isLight
-                  ? alpha(theme.palette.primary.main, 0.05)
-                  : alpha(theme.palette.info.main, 0.1),
-                border: `1px dashed ${alpha(theme.palette.divider, 0.3)}`,
-              }}
-            >
-              <MessageRoundedIcon
-                sx={{
-                  fontSize: 48,
-                  color: "text.secondary",
-                  mb: 2,
-                  opacity: 0.5,
-                }}
-              />
-              <Typography variant="h6" color="text.secondary" gutterBottom>
-                No threads found
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {searchTerm ||
-                statusFilter ||
-                categoryFilter ||
-                dateFromFilter ||
-                dateToFilter
-                  ? "Try adjusting your filters"
-                  : "No threads between this mentor and mentee"}
-              </Typography>
-            </Paper>
-          )}
-
-
+                />
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  No threads found
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {searchTerm || statusFilter || categoryFilter || dateFromFilter || dateToFilter
+                    ? "Try adjusting your filters"
+                    : "No threads between this mentor and mentee"}
+                </Typography>
+              </Paper>
+            )}
+          </Card>
         </Container>
       </Box>
     </Page>
