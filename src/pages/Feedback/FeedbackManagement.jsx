@@ -100,6 +100,52 @@ const FeedbackManagement = () => {
   const { user } = useContext(AuthContext);
   const canEditWindow = user?.roleName === "admin";
   const isHodOrDirector = user?.roleName === "hod" || user?.roleName === "director";
+  const [departmentScope, setDepartmentScope] = useState(
+    user?.department || user?.facultyProfile?.department || ""
+  );
+
+  const getDepartmentValue = (item) =>
+    item?.department?.name ||
+    item?.department ||
+    item?.profile?.department ||
+    item?.studentProfile?.department ||
+    item?.facultyProfile?.department ||
+    item?.departmentName ||
+    "";
+
+  useEffect(() => {
+    const resolveDepartmentScope = async () => {
+      if (!user?._id) {
+        setDepartmentScope("");
+        return;
+      }
+
+      const existingDepartment =
+        user?.department || user?.facultyProfile?.department || "";
+      if (existingDepartment) {
+        setDepartmentScope(existingDepartment);
+        return;
+      }
+
+      try {
+        const response = await api.get(`/users/${user._id}`, {
+          params: { includeProfiles: true },
+        });
+        const resolvedUser = response.data?.data?.user || {};
+        setDepartmentScope(
+          resolvedUser.department ||
+            resolvedUser.facultyProfile?.department ||
+            resolvedUser.studentProfile?.department ||
+            ""
+        );
+      } catch (error) {
+        logger.error("Unable to resolve department scope for feedback management:", error);
+        setDepartmentScope("");
+      }
+    };
+
+    resolveDepartmentScope();
+  }, [user?._id, user?.department, user?.facultyProfile?.department]);
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -172,15 +218,23 @@ const FeedbackManagement = () => {
       }
 
       // 4. Fetch the data based on active parameters
+      const departmentParam = departmentScope || user.department || undefined;
+
       const overviewResponse = await api.get("/feedback/overview", { 
         params: { 
           semester: activeSem || undefined, 
           feedbackRound: activeRound,
-          department: user.roleName !== 'admin' ? user.department : undefined
+          department: user.roleName !== 'admin' ? departmentParam : undefined
         } 
       });
       const overviewData = overviewResponse.data?.data || {};
       const fallbackSelection = overviewData.selection || null;
+      const scopedFeedbacks =
+        isHodOrDirector && departmentParam
+          ? (overviewData.feedbacks || []).filter((feedback) =>
+              getDepartmentValue(feedback) === departmentParam
+            )
+          : (overviewData.feedbacks || []);
 
       if ((!activeSem || !query.semester) && fallbackSelection?.semester) {
         activeSem = fallbackSelection.semester.toString();
@@ -196,19 +250,19 @@ const FeedbackManagement = () => {
         }
       }
 
-      setFeedbacks(overviewData.feedbacks || []);
+      setFeedbacks(scopedFeedbacks);
       logger.info("Loaded feedback overview", {
         window: windowData,
         selection: fallbackSelection,
-        feedbackCount: overviewData.feedbacks?.length || 0,
+        feedbackCount: scopedFeedbacks.length,
       });
 
       // 5. Fetch stats if semester is available
       if (activeSem) {
         try {
           const statsParams = {};
-          if (user.roleName !== 'admin' && user.department) {
-            statsParams.department = user.department;
+          if (user.roleName !== 'admin' && departmentParam) {
+            statsParams.department = departmentParam;
           }
           const statsResponse = await api.get(`/feedback/stats/${activeSem}/${activeRound}`, {
             params: statsParams
@@ -227,16 +281,21 @@ const FeedbackManagement = () => {
             params: {
               role: "student",
               semester: activeSem,
-              department: user.roleName !== 'admin' ? user.department : undefined,
+              department: user.roleName !== 'admin' ? departmentParam : undefined,
               limit: 1000 // Get all for this semester
             }
           });
           const fetchedStudents = studentResponse.data?.data?.users || [];
-          setAllStudents(fetchedStudents);
+          const scopedStudents =
+            isHodOrDirector && departmentParam
+              ? fetchedStudents.filter((student) => getDepartmentValue(student) === departmentParam)
+              : fetchedStudents;
+
+          setAllStudents(scopedStudents);
 
           if (isHodOrDirector) {
             const feedbackMap = {};
-            (overviewData.feedbacks || []).forEach((fb) => {
+            scopedFeedbacks.forEach((fb) => {
               const studentId = fb.userId?._id || fb.userId;
               if (!feedbackMap[studentId]) {
                 feedbackMap[studentId] = [];
@@ -244,7 +303,7 @@ const FeedbackManagement = () => {
               feedbackMap[studentId].push(fb);
             });
 
-            const enrichedMentees = fetchedStudents.map((student) => ({
+            const enrichedMentees = scopedStudents.map((student) => ({
               studentId: student._id,
               studentName: student.name,
               collegeCode: student.collegeCode,

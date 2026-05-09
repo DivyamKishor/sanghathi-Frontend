@@ -43,6 +43,52 @@ const ThreadReports = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [departments, setDepartments] = useState([]);
+  const [departmentScope, setDepartmentScope] = useState(
+    user?.department || user?.facultyProfile?.department || ""
+  );
+
+  const getDepartmentValue = (item) =>
+    item?.department?.name ||
+    item?.department ||
+    item?.profile?.department ||
+    item?.studentProfile?.department ||
+    item?.facultyProfile?.department ||
+    item?.departmentName ||
+    "";
+
+  useEffect(() => {
+    const resolveDepartmentScope = async () => {
+      if (!user?._id) {
+        setDepartmentScope("");
+        return;
+      }
+
+      const existingDepartment =
+        user?.department || user?.facultyProfile?.department || "";
+      if (existingDepartment) {
+        setDepartmentScope(existingDepartment);
+        return;
+      }
+
+      try {
+        const response = await api.get(`/users/${user._id}`, {
+          params: { includeProfiles: true },
+        });
+        const resolvedUser = response.data?.data?.user || {};
+        setDepartmentScope(
+          resolvedUser.department ||
+            resolvedUser.facultyProfile?.department ||
+            resolvedUser.studentProfile?.department ||
+            ""
+        );
+      } catch (error) {
+        logger.error("Unable to resolve department scope for thread reports:", error);
+        setDepartmentScope("");
+      }
+    };
+
+    resolveDepartmentScope();
+  }, [user?._id, user?.department, user?.facultyProfile?.department]);
 
   // Fetch mentors data
   useEffect(() => {
@@ -64,19 +110,28 @@ const ThreadReports = () => {
           return;
         }
 
-        // HOD keeps the department-scoped mentors endpoint, everyone else uses the general faculty list
-        const endpoint = user?.roleName === "hod" ? "/hod/mentors" : "/users?role=faculty";
+        const endpoint = "/users?role=faculty";
 
         const response = await api.get(endpoint);
         const mentorsData = response.data.data.mentors || response.data.data.users || response.data.data;
 
         const normalizedMentors = Array.isArray(mentorsData) ? mentorsData : [];
-        setMentors(normalizedMentors);
+        const scopedMentors =
+          user?.roleName === "hod" || user?.roleName === "director"
+            ? normalizedMentors.filter((mentor) => {
+                if (!departmentScope) {
+                  return true;
+                }
+                return getDepartmentValue(mentor) === departmentScope;
+              })
+            : normalizedMentors;
+
+        setMentors(scopedMentors);
 
         const uniqueDepartments = [
           ...new Set(
-            normalizedMentors
-              .map((m) => m?.department?.name || m?.department)
+            scopedMentors
+              .map((m) => getDepartmentValue(m))
               .filter(Boolean)
           ),
         ];
@@ -90,7 +145,7 @@ const ThreadReports = () => {
     };
 
     fetchMentors();
-  }, [user, enqueueSnackbar]);
+  }, [user, enqueueSnackbar, departmentScope]);
 
   // Filter mentors
   const filteredMentors = mentors.filter((mentor) => {
