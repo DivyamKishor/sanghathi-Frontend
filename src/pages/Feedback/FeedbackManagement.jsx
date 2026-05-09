@@ -303,24 +303,56 @@ const FeedbackManagement = () => {
               feedbackMap[studentId].push(fb);
             });
 
-            const enrichedMentees = scopedStudents.map((student) => ({
+            // Fetch students with their mentor data from the dedicated mentorship endpoint
+            let studentsWithMentors = scopedStudents;
+            try {
+              const mentorshipResponse = await api.get("/mentorship/students", {
+                params: {
+                  semester: activeSem,
+                  department: departmentParam || undefined
+                }
+              });
+              
+              const enrichedStudents = mentorshipResponse.data?.data || [];
+              if (enrichedStudents.length > 0) {
+                // Use the students from mentorship endpoint as they have mentor info
+                studentsWithMentors = enrichedStudents;
+                logger.info("Loaded students with mentor data from mentorship endpoint");
+              }
+            } catch (err) {
+              logger.warn("Could not fetch from mentorship endpoint, using existing student data:", err);
+              // Fall back to using the students we already fetched
+            }
+
+            const enrichedMentees = studentsWithMentors.map((student) => ({
               studentId: student._id,
               studentName: student.name,
               collegeCode: student.collegeCode,
               semester: student.semester || student.sem,
+              department: student.department || getDepartmentValue(student),
+              mentorName: student.mentor?.name || "Unassigned",
+              mentorId: student.mentor?._id || null,
               feedbacks: feedbackMap[student._id] || [],
               averageScore: feedbackMap[student._id]?.find((f) => f.feedbackRound === activeRound)?.averageScore,
             }));
 
-            setMentorGroups([
-              {
-                mentorId: user._id,
-                mentorName: "My Mentees",
-                mentees: enrichedMentees,
-              },
-            ]);
+            // Group mentees by actual mentor
+            const groupedByMentor = {};
+            enrichedMentees.forEach((mentee) => {
+              const mentorKey = mentee.mentorId || "unassigned";
+              if (!groupedByMentor[mentorKey]) {
+                groupedByMentor[mentorKey] = {
+                  mentorId: mentee.mentorId,
+                  mentorName: mentee.mentorName,
+                  mentees: []
+                };
+              }
+              groupedByMentor[mentorKey].mentees.push(mentee);
+            });
 
-            logger.info("Mentee data prepared for HOD/Director:", enrichedMentees.length, "mentees");
+            setMentorGroups(Object.values(groupedByMentor));
+
+            logger.info("Mentee data prepared for HOD/Director:", enrichedMentees.length, "mentees", "grouped by", Object.keys(groupedByMentor).length, "mentors");
           }
         } catch (err) {
           logger.error("Error fetching students:", err);
@@ -972,6 +1004,7 @@ const FeedbackManagement = () => {
                     <TableHead sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.05) }}>
                       <TableRow>
                         <TableCell sx={{ fontWeight: 800 }}>Student</TableCell>
+                        {isHodOrDirector && <TableCell sx={{ fontWeight: 800 }}>Department</TableCell>}
                         {isHodOrDirector && <TableCell sx={{ fontWeight: 800 }}>Mentor</TableCell>}
                         <TableCell align="center" sx={{ fontWeight: 800 }}>Avg Score</TableCell>
                         <TableCell align="center" sx={{ fontWeight: 800 }}>Status</TableCell>
@@ -1011,9 +1044,16 @@ const FeedbackManagement = () => {
                                     </Box>
                                   </Stack>
                                 </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{mentee.mentorName}</Typography>
-                                </TableCell>
+                                {isHodOrDirector && (
+                                  <TableCell>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{mentee.department || "N/A"}</Typography>
+                                  </TableCell>
+                                )}
+                                {isHodOrDirector && (
+                                  <TableCell>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{mentee.mentorName || "Unassigned"}</Typography>
+                                  </TableCell>
+                                )}
                                 <TableCell align="center">
                                   <Typography variant="subtitle2" sx={{ 
                                     fontWeight: 800, 
