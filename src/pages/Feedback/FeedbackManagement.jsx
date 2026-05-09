@@ -687,9 +687,24 @@ const FeedbackManagement = () => {
           {/* Header */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
             <Box>
-              <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                Feedback Control Center
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                <Typography variant="h4" sx={{ fontWeight: 800 }}>
+                  Feedback Control Center
+                </Typography>
+                <Chip
+                  label={feedbackWindow?.isEnabled === false ? "CLOSED" : feedbackWindow?.isEnabled ? "OPEN" : "NO WINDOW"}
+                  color={feedbackWindow?.isEnabled === false ? "error" : feedbackWindow?.isEnabled ? "success" : "default"}
+                  variant="filled"
+                  sx={{
+                    fontWeight: 900,
+                    fontSize: '0.85rem',
+                    py: 2.5,
+                    px: 2,
+                    minWidth: '100px',
+                    textAlign: 'center'
+                  }}
+                />
+              </Box>
               <Typography variant="body2" color="text.secondary">
                 Manage feedback windows and analyze student responses.
               </Typography>
@@ -1170,7 +1185,7 @@ const FeedbackManagement = () => {
                   onPageChange={handleChangePage}
                   rowsPerPage={rowsPerPage}
                   onRowsPerPageChange={handleChangeRowsPerPage}
-                  rowsPerPageOptions={[5, 10, 25]}
+                  rowsPerPageOptions={[25, 50, 75, 100]}
                 />
               </Box>
             )}
