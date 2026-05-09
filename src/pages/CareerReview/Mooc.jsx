@@ -57,7 +57,7 @@ export default function Mooc({ resolvedSemester = null }) {
 
     const methods = useForm({
       defaultValues: {
-        mooc: [{ portal: "", title: "", semester: "", startDate: null, completedDate: null, score: null, certificateLink: "" }],
+        mooc: [],
       },
     });
 
@@ -118,7 +118,7 @@ export default function Mooc({ resolvedSemester = null }) {
           reset({ mooc: formattedMooc });
         } else {
           logger.warn("No mooc data found for this user");
-          reset({ mooc: [{ portal: "", title: "", semester: normalizedResolvedSemester ? String(normalizedResolvedSemester) : "", startDate: null, completedDate: null, score: null, certificateLink: "" }] });
+          reset({ mooc: [] });
         }
       } catch (error) {
         logger.info("Error fetching mooc data:", error);
@@ -295,7 +295,7 @@ export default function Mooc({ resolvedSemester = null }) {
                 <Grid item xs={12}>
                   <Box sx={{ py: 4, textAlign: "center" }}>
                     <Typography variant="body2" color="text.secondary">
-                      No MOOC records match the selected semester.
+                      {fields.length === 0 ? "No MOOC records added yet." : "No MOOC records match the selected semester."}
                     </Typography>
                   </Box>
                 </Grid>
@@ -303,7 +303,7 @@ export default function Mooc({ resolvedSemester = null }) {
                 <Grid item xs={12}>
                   <Button 
                     variant="contained" 
-                    onClick={() => append({ portal: "", title: "", semester: normalizedResolvedSemester ? String(normalizedResolvedSemester) : "", startDate: null, completedDate: null, score: null, certificateLink: "" })} 
+                          onClick={() => append({ portal: "", title: "", semester: normalizedResolvedSemester ? String(normalizedResolvedSemester) : "", startDate: null, completedDate: null, score: null, certificateLink: "" })} 
                     sx={{ mt: 2, display: "block", mx: "auto" }}>
                     Add Row
                   </Button>

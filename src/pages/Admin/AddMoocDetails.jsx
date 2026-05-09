@@ -196,10 +196,6 @@ const AddMoocDetails = () => {
 
         const response = await api.get(`/users/usn/${row.USN}`, {
           params: { _ts: Date.now() },
-          headers: {
-            "Cache-Control": "no-cache",
-            Pragma: "no-cache"
-          }
         });
         const userId = response.data?.userId || response.data?._id;
 

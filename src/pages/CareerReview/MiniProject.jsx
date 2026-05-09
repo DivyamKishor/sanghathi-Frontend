@@ -48,7 +48,7 @@ export default function MiniProject({ resolvedSemester = null }) {
     
     const methods = useForm({
       defaultValues: {
-        miniproject: [{ title: "", semester: "", manHours: "", startDate: null, completedDate: null }],
+        miniproject: [],
       },
     });
 
@@ -79,7 +79,7 @@ export default function MiniProject({ resolvedSemester = null }) {
           reset({ miniproject: formattedMiniProject });
         } else {
           logger.warn("No miniproject data found for this user");
-          reset({ miniproject: [{ title: "", semester: normalizedResolvedSemester ? String(normalizedResolvedSemester) : "", manHours: "", startDate: null, completedDate: null }] });
+          reset({ miniproject: [] });
         }
       } catch (error) {
         logger.info("Error fetching miniproject data:", error);
@@ -246,7 +246,7 @@ export default function MiniProject({ resolvedSemester = null }) {
             <Grid item xs={12}>
               <Box sx={{ py: 4, textAlign: "center" }}>
                 <Typography variant="body2" color="text.secondary">
-                  No mini project records match the selected semester.
+                  {fields.length === 0 ? "No mini project records added yet." : "No mini project records match the selected semester."}
                 </Typography>
               </Box>
             </Grid>
