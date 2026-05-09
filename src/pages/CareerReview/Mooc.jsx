@@ -168,24 +168,20 @@ export default function Mooc({ resolvedSemester = null }) {
       }, []);
     }, [fields, watchedValues?.mooc, semesterFilter, normalizedResolvedSemester]);
 
-    const submitMooc = useCallback((formData) => {
-      const payload = {
-        mooc: (formData.mooc || []).map((item) => ({
-          ...item,
-          semester: parseSemesterValue(item.semester, normalizedResolvedSemester),
-          startDate: item.startDate && new Date(item.startDate).getTime() <= Date.now() ? item.startDate : null,
-          completedDate: item.completedDate && new Date(item.completedDate).getTime() <= Date.now() ? item.completedDate : null,
-        })),
-        userId: user._id,
-      };
-
-      return onSubmit(payload);
-    }, [normalizedResolvedSemester, onSubmit, user._id]);
-  
     const onSubmit = useCallback(
       async (formData) => {
         try {
-          await api.post("/mooc-data/mooc", { mooc: formData.mooc, userId: user._id });
+          const payload = {
+            mooc: (formData.mooc || []).map((item) => ({
+              ...item,
+              semester: parseSemesterValue(item.semester, normalizedResolvedSemester),
+              startDate: item.startDate && new Date(item.startDate).getTime() <= Date.now() ? item.startDate : null,
+              completedDate: item.completedDate && new Date(item.completedDate).getTime() <= Date.now() ? item.completedDate : null,
+            })),
+            userId: user._id,
+          };
+
+          await api.post("/mooc-data/mooc", payload);
           enqueueSnackbar("Mooc data updated successfully!", {
             variant: "success",
           });
@@ -203,7 +199,7 @@ export default function Mooc({ resolvedSemester = null }) {
   return (
       <FormProvider
       methods={methods}
-      onSubmit={handleSubmit(submitMooc)}
+      onSubmit={handleSubmit(onSubmit)}
       disableAutoDraft
     >
           <Card sx={{ p: 3 }}>

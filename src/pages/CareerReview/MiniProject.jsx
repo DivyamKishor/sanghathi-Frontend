@@ -128,24 +128,20 @@ export default function MiniProject({ resolvedSemester = null }) {
       }, []);
     }, [fields, methods, semesterFilter, normalizedResolvedSemester]);
 
-    const onSubmitWithNormalization = useCallback((formData) => {
-      const payload = {
-        miniproject: (formData.miniproject || []).map((item) => ({
-          ...item,
-          semester: parseSemesterValue(item.semester, normalizedResolvedSemester),
-          startDate: item.startDate && new Date(item.startDate).getTime() <= Date.now() ? item.startDate : null,
-          completedDate: item.completedDate && new Date(item.completedDate).getTime() <= Date.now() ? item.completedDate : null,
-        })),
-        userId: user._id,
-      };
-
-      return onSubmit(payload);
-    }, [normalizedResolvedSemester, onSubmit, user._id]);
-  
     const onSubmit = useCallback(
       async (formData) => {
         try {
-          await api.post("/project/miniproject", { miniproject: formData.miniproject, userId: user._id });
+          const payload = {
+            miniproject: (formData.miniproject || []).map((item) => ({
+              ...item,
+              semester: parseSemesterValue(item.semester, normalizedResolvedSemester),
+              startDate: item.startDate && new Date(item.startDate).getTime() <= Date.now() ? item.startDate : null,
+              completedDate: item.completedDate && new Date(item.completedDate).getTime() <= Date.now() ? item.completedDate : null,
+            })),
+            userId: user._id,
+          };
+
+          await api.post("/project/miniproject", payload);
           enqueueSnackbar("miniproject data updated successfully!", {
             variant: "success",
           });
@@ -161,7 +157,7 @@ export default function MiniProject({ resolvedSemester = null }) {
     );
 
   return (
-    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmitWithNormalization)}>
+    <FormProvider methods={methods} onSubmit={handleSubmit(onSubmit)}>
       <Card sx={{ p: 3 }}>
         <Stack
           direction={{ xs: "column", md: "row" }}
